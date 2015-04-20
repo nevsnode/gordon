@@ -1,11 +1,14 @@
 {
-    "RedisHost": "127.0.0.1",
-    "RedisPort": 6379,
+    "RedisNetwork": "tcp",
+    "RedisAddress": "127.0.0.1:6379",
     "RedisQueueKey": "taskqueue",
-    "Worker": 2,
-    "Tasks": {
-        "echo": "/bin/echo"
-    },
+    "Tasks": [
+        {
+            "Type": "something",
+            "Script": "/something.php",
+            "Workers": 2
+        }
+    ],
     "Lockfile": "run.lock",
-    "ErrorCmd": "echo \"%s\" | sendmail mail@host.com"
+    "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com"
 }
