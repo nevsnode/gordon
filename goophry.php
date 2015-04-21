@@ -1,6 +1,6 @@
 <?php
 
-class Gorphp
+class Goophry
 {
     protected $params   = array();
     protected $redis    = null;
