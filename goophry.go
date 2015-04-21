@@ -48,7 +48,7 @@ func main() {
 		log.Fatal("basepath.Update(): ", err)
 	}
 
-	config, err := getConfig(basepath.GetAbsWith("./config.json"))
+	config, err := getConfig(basepath.GetAbsWith("./goophry.config.json"))
 	if err != nil {
 		log.Fatal("getConfig(): ", err)
 	}
