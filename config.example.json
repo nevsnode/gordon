@@ -9,6 +9,6 @@
             "Workers": 2
         }
     ],
-    "Lockfile": "./run.lock",
+    "Lockfile": "./goophry.lock",
     "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com"
 }
