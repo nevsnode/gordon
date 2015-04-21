@@ -16,6 +16,8 @@ go get github.com/nightlyone/lockfile
 go build goophry.go
 ```
 
+Now simply deploy the binary together with the configuration file `goophry.config.json` in the same directory.
+
 
 ## Example setup
 
@@ -100,10 +102,6 @@ Field|Type|Description
 `Tasks`|string|An array of task objects _(see below)_
 `ErrorCmd`|string|A command which is executed when a task failed _(see below)_
 
-*ErrorCmd* is a command that will be executed, when a task returned an exist status other than 0,
-or created output. It will then execute the command and uses `Sprintf` to replace `%s` with the error/output.
-The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
-
 ##### Task Objects
 
 Field|Type|Description
@@ -111,6 +109,10 @@ Field|Type|Description
 Type|string|This field defines the TaskType, it has to be used in `addTask()`
 Script|string|The path to the script that will be executed (with the optionally passed arguments)
 Workers|int|The number of concurrent instances which execute the configured script
+
+*ErrorCmd* is a command that will be executed when a task returned an exit status other than 0,
+or created output. It will then execute the command and uses `Sprintf` to replace `%s` with the error/output.
+The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
 
 
 ## Task Arguments
