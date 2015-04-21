@@ -32,7 +32,6 @@ go build goophry.go
             "Workers": 2
         }
     ],
-    "Lockfile": "./goophry.lock",
     "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com"
 }
 ```
@@ -89,7 +88,6 @@ Default configuration
             "Workers": 2
         }
     ],
-    "Lockfile": "./goophry.lock",
     "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com"
 }
 ```
@@ -100,7 +98,6 @@ Field|Type|Description
 `RedisAddress`|string|Setting needed to connect to Redis (as by [redigo](http://godoc.org/github.com/garyburd/redigo/redis#Dial))
 `RedisQueueKey`|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 `Tasks`|string|An array of task objects _(see below)_
-`Lockfile`|string|The path to the lockfile, to prevent multiple instances
 `ErrorCmd`|string|A command which is executed when a task failed _(see below)_
 
 *ErrorCmd* is a command that will be executed, when a task returned an exist status other than 0,

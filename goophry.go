@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"github.com/nightlyone/lockfile"
 	"log"
 	"os"
 	"os/exec"
@@ -20,7 +19,6 @@ type ConfigStruct struct {
 	RedisAddress  string
 	RedisQueueKey string
 	Tasks         []TaskStruct
-	Lockfile      string
 	ErrorCmd      string
 }
 
@@ -52,25 +50,6 @@ func main() {
 	if err != nil {
 		log.Fatal("getConfig(): ", err)
 	}
-
-	lock, err := lockfile.New(basepath.GetAbsWith(config.Lockfile))
-	if err != nil {
-		log.Fatal("lockfile.New(): ", err)
-	}
-	err = lock.TryLock()
-	if err != nil {
-		if err == lockfile.ErrBusy {
-			debugOutput(fmt.Sprintf("lock.TryLock(): %s", err))
-			os.Exit(0)
-		}
-		log.Fatal("lock.TryLock(): ", err)
-	}
-	defer func() {
-		err := lock.Unlock()
-		if err != nil {
-			log.Fatal("lock.Unlock(): ", err)
-		}
-	}()
 
 	var wg sync.WaitGroup
 
