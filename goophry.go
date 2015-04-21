@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
+	"github.com/fzzy/radix/redis"
 	"log"
 	"os"
 	"os/exec"
@@ -115,7 +115,7 @@ func taskQueueWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskS
 	queueKey := config.RedisQueueKey + ":" + task.Type
 
 	for {
-		values, err := redis.Strings(rc.Do("BLPOP", queueKey, 0))
+		values, err := rc.Cmd("BLPOP", queueKey, 0).List()
 		if err != nil {
 			errorCmdRedis(config.ErrorCmd, err)
 			continue
