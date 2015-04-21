@@ -17,7 +17,7 @@ go build goophry.go
 ```
 
 
-## Example
+## Example setup
 
 ##### goophry.config.json
 ```json
@@ -76,7 +76,7 @@ You may also want to have a look at the example below on how to use it.
 
 ## Configuration
 
-Example configuration
+Default configuration
 ```json
 {
     "RedisNetwork": "tcp",
@@ -96,7 +96,8 @@ Example configuration
 
 Field|Type|Description
 -----|----|-----------
-`RedisNetwork`, `RedisAddress`|string|The settings needed to connect to Redis (as needed by [redigo](http://godoc.org/github.com/garyburd/redigo/redis#Dial))
+`RedisNetwork`|string|Setting needed to connect to Redis (as by [redigo](http://godoc.org/github.com/garyburd/redigo/redis#Dial))
+`RedisAddress`|string|Setting needed to connect to Redis (as by [redigo](http://godoc.org/github.com/garyburd/redigo/redis#Dial))
 `RedisQueueKey`|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 `Tasks`|string|An array of task objects _(see below)_
 `Lockfile`|string|The path to the lockfile, to prevent multiple instances
@@ -108,8 +109,8 @@ The error-content will be escaped and quoted before, so there's no need to wrap 
 
 ##### Task Objects
 
-Field|Description
------|-----------
+Field|Type|Description
+-----|----|-----------
 Type|string|This field defines the TaskType, it has to be used in `addTask()`
 Script|string|The path to the script that will be executed (with the optionally passed arguments)
 Workers|int|The number of concurrent instances which execute the configured script
