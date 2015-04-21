@@ -42,20 +42,18 @@ func init() {
 }
 
 func main() {
-	basepath, err := getBasePath()
+	basepath := Basepath{}
+	err := basepath.Update()
 	if err != nil {
-		log.Fatal("getBasePath(): ", err)
+		log.Fatal("basepath.Update(): ", err)
 	}
 
-	config, err := getConfig(basepath)
+	config, err := getConfig(basepath.GetAbsWith("./config.json"))
 	if err != nil {
 		log.Fatal("getConfig(): ", err)
 	}
 
-	if !filepath.IsAbs(config.Lockfile) {
-		config.Lockfile = basepath + "/" + config.Lockfile
-	}
-	lock, err := lockfile.New(config.Lockfile)
+	lock, err := lockfile.New(basepath.GetAbsWith(config.Lockfile))
 	if err != nil {
 		log.Fatal("lockfile.New(): ", err)
 	}
@@ -79,6 +77,8 @@ func main() {
 	for _, task := range config.Tasks {
 		debugOutput(fmt.Sprintf("Creating %d workers for type %s", task.Workers, task.Type))
 		queue := make(chan QueueTaskStruct)
+
+		task.Script = basepath.GetAbsWith(task.Script)
 
 		for i := 0; i < task.Workers; i++ {
 			wg.Add(1)
@@ -104,8 +104,8 @@ func getBasePath() (path string, err error) {
 	return
 }
 
-func getConfig(basepath string) (c ConfigStruct, err error) {
-	file, err := os.Open(basepath + "/config.json")
+func getConfig(path string) (c ConfigStruct, err error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return
 	}
@@ -204,4 +204,20 @@ func errorCmd(cmd string, msg string) {
 	if err != nil {
 		log.Println(fmt.Sprintf("Error calling ErrorCmd:\n%s", err))
 	}
+}
+
+type Basepath struct {
+	Path string
+}
+
+func (b *Basepath) Update() (err error) {
+	b.Path, err = filepath.Abs(filepath.Dir(os.Args[0]))
+	return
+}
+
+func (b Basepath) GetAbsWith(file string) (string) {
+	if !filepath.IsAbs(file) {
+		file = b.Path + "/" + file
+	}
+	return file
 }
