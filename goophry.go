@@ -62,11 +62,11 @@ func main() {
 		for i := 0; i < task.Workers; i++ {
 			wg.Add(1)
 			go taskWorker(config, task, queue)
-			debugOutput("Started worker for type " + task.Type)
+			debugOutput("Created worker for type " + task.Type)
 		}
 
 		go taskQueueWorker(config, task, queue)
-		debugOutput("Started queue worker for type " + task.Type)
+		debugOutput("Created queue worker for type " + task.Type)
 	}
 
 	wg.Wait()
