@@ -61,11 +61,12 @@ func main() {
 
 		for i := 0; i < task.Workers; i++ {
 			wg.Add(1)
-			go taskWorker(config, task, queue)
+			go taskWorker(config, task, queue, &wg)
 			debugOutput("Created worker for type " + task.Type)
 		}
 
-		go taskQueueWorker(config, task, queue)
+		wg.Add(1)
+		go taskQueueWorker(config, task, queue, &wg)
 		debugOutput("Created queue worker for type " + task.Type)
 	}
 
@@ -95,7 +96,7 @@ func getConfig(path string) (c ConfigStruct, err error) {
 	return
 }
 
-func taskWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskStruct) {
+func taskWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskStruct, wg *sync.WaitGroup) {
 	for t := range queue {
 		debugOutput("Executing task for type " + task.Type)
 		err := executeTask(task.Script, t.Args)
@@ -103,9 +104,11 @@ func taskWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskStruct
 			errorCmdTask(config.ErrorCmd, task.Script, t.Args, err)
 		}
 	}
+
+	wg.Done()
 }
 
-func taskQueueWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskStruct) {
+func taskQueueWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskStruct, wg *sync.WaitGroup) {
 	rc, err := redis.Dial(config.RedisNetwork, config.RedisAddress)
 	if err != nil {
 		log.Fatal("redis.Dial(): ", err)
@@ -117,8 +120,8 @@ func taskQueueWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskS
 	for {
 		values, err := rc.Cmd("BLPOP", queueKey, 0).List()
 		if err != nil {
-			errorCmdRedis(config.ErrorCmd, err)
-			continue
+			errorCmdRedis(config.ErrorCmd, task.Type, err)
+			break
 		}
 		if len(values) == 0 {
 			continue
@@ -141,6 +144,9 @@ func taskQueueWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskS
 			queue <- t
 		}
 	}
+
+	close(queue)
+	wg.Done()
 }
 
 func parseQueueTask(value string) (task QueueTaskStruct, err error) {
@@ -165,8 +171,8 @@ func errorCmdTask(cmd string, script string, args []string, err error) {
 	errorCmd(cmd, msg)
 }
 
-func errorCmdRedis(cmd string, err error) {
-	msg := fmt.Sprintf("Redis Error:\n%s", err)
+func errorCmdRedis(cmd string, tt string, err error) {
+	msg := fmt.Sprintf("Redis Error:\n%s\nStopping task %s.", err, tt)
 	errorCmd(cmd, msg)
 }
 
