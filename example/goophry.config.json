@@ -1,0 +1,13 @@
+{
+    "RedisNetwork": "tcp",
+    "RedisAddress": "10.10.10.10:6379",
+    "RedisQueueKey": "mytaskqueue",
+    "Tasks": [
+        {
+            "Type": "sometask",
+            "Script": "./somescript.php",
+            "Workers": 2
+        }
+    ],
+    "ErrorCmd": "echo %s >> /tmp/goophry.error.log"
+}

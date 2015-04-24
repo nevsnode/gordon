@@ -2,62 +2,52 @@ Goophry
 =======
 
 Goophry aims to be a very simple and basic task-queue.  
-It is built utilizing Go, Redis and in this example implementation, PHP (but not bound to it).
+It is built utilizing Go, Redis and in this example implementation, PHP.  
+
+There is no direct dependency on PHP, as Goophry just executes commands.
+This allows the usage of any kind of script/application, regardless of the used programming language,
+as long as it runs on the commandline.
 
 
-## Building
+## Getting Started
+
+### Building
 
 ```sh
-# get necessary libraries
-go get github.com/fzzy/radix/redis
+# get/update necessary libraries
+go get -u github.com/fzzy/radix/redis
 
 # build the binary
 go build goophry.go
 ```
 
+**To run the tests:**
+
+```sh
+# get/update necessary libraries
+go get -u github.com/stretchr/testify
+
+# run tests
+go test ./goo/*
+```
+
 Now simply deploy the binary together with the configuration file `goophry.config.json` in the same directory.
 
 
-## Example setup
+### Usage
 
-##### goophry.config.json
-```json
-{
-    "RedisNetwork": "tcp",
-    "RedisAddress": "127.0.0.1:6379",
-    "RedisQueueKey": "myqueue",
-    "Tasks": [
-        {
-            "Type": "sometask",
-            "Script": "./something.php",
-            "Workers": 2
-        }
-    ],
-    "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com"
-}
+The Goophry binary accepts the following flags (all are optional):
+
+Flag|Type|Description
+----|----|-----------
+v|bool|Set this flag to enable verbose/debugging output
+c|string|Pass this flag with the path of the configuration file (overrides the default location)
+
+Example:
+```sh
+goophry -v -c /path/to/config.json
 ```
 
-##### addtask.php
-```php
-<?php
-require 'goophry.php';
-
-$goophry = new Goophry(array(
-    'redisServer'   => '127.0.0.1',
-    'redisPort'     => 6379,
-    'redisQueueKey' => 'myqueue',
-));
-
-$goophry->addTask('sometask', '123');
-```
-
-##### something.php
-```php
-<?php
-$arg = $argv[1]; // is '123'
-
-/* do something with $arg */
-```
 
 ## Architecture
 
@@ -66,37 +56,23 @@ A very simplified representation:
 [goophry.php] => [Redis] => [goophry.go] => ./something.php
                                          => ./something.php
                                          => ./somethingElse.php
+                                         => ./doThis.py
 ```
 
 Goophry is built by using lists in Redis. These are named with the scheme `RedisQueueKey:TaskType`.  
 The example implementation in `goophry.php` shows how to insert entries into Redis accordingly.
 
-You may also want to have a look at the example below on how to use it.
+You may also want to have a look at the example directory on how to use it.
 
 
-## Configuration
+## Advanced
 
-Default configuration
-```json
-{
-    "RedisNetwork": "tcp",
-    "RedisAddress": "127.0.0.1:6379",
-    "RedisQueueKey": "taskqueue",
-    "Tasks": [
-        {
-            "Type": "something",
-            "Script": "./something.php",
-            "Workers": 2
-        }
-    ],
-    "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com"
-}
-```
+### Configuration Options
 
 Field|Type|Description
 -----|----|-----------
-`RedisNetwork`|string|Setting needed to connect to Redis (as by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
-`RedisAddress`|string|Setting needed to connect to Redis (as by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
+`RedisNetwork`|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
+`RedisAddress`|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
 `RedisQueueKey`|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 `Tasks`|string|An array of task objects _(see below)_
 `ErrorCmd`|string|A command which is executed when a task failed _(see below)_
@@ -109,35 +85,37 @@ Field|Type|Description
 `Script`|string|The path to the script that will be executed (with the optionally passed arguments)
 `Workers`|int|The number of concurrent instances which execute the configured script
 
-*ErrorCmd* is a command that will be executed when a task returned an exit status other than 0, or created output.  
+**ErrorCmd** is a command that will be executed when a task returned an exit status other than 0, or created output.  
 It will then execute the command and uses `Sprintf` to replace `%s` with the error/output.
 The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
 
 
-## Task Arguments
+### Task Arguments
 
 In the PHP example, arguments are passed to `addTask()` in the same order as they
 will be passed to the configured script.
 
 That means when calling the addTask-method like this:
 ```php
+<?php
 $goophry->addTask('foobar', '123', '456');
 ```
 
 Groophry will call the configured script (e.g. "foobar.php") like this:
-```sh
+```
 /path/to/foobar.php "123" "456"
 ```
 
-*Important:* As it is not possible to pass things like objects to the scripts via commandline,
+**Important:** As it is not possible to pass things like objects to the scripts via commandline,
 they may be json-encoded before, as in the example class.
 
 For example a call like this:
 ```php
+<?php
 $goophry->addTask('foobar', array('user' => 123));
 ```
 
 Will then be executed like this:
-```sh
+```
 /path/to/foobar.php "{\"user\":123}"
 ```
