@@ -95,8 +95,8 @@ Default configuration
 
 Field|Type|Description
 -----|----|-----------
-`RedisNetwork`|string|Setting needed to connect to Redis (as by [redigo](http://godoc.org/github.com/fzzy/radix/redis#Dial))
-`RedisAddress`|string|Setting needed to connect to Redis (as by [redigo](http://godoc.org/github.com/fzzy/radix/redis#Dial))
+`RedisNetwork`|string|Setting needed to connect to Redis (as by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
+`RedisAddress`|string|Setting needed to connect to Redis (as by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
 `RedisQueueKey`|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 `Tasks`|string|An array of task objects _(see below)_
 `ErrorCmd`|string|A command which is executed when a task failed _(see below)_
