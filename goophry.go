@@ -50,6 +50,10 @@ func main() {
 
 		ct.Script = base.GetPathWith(ct.Script)
 
+		if ct.Workers <= 1 {
+			ct.Workers = 1
+		}
+
 		for i := 0; i < ct.Workers; i++ {
 			tq.WaitGroup.Add(1)
 			go tq.TaskWorker(ct, queue)
