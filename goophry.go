@@ -1,202 +1,65 @@
 package main
 
 import (
-	"encoding/json"
+	"./goo/basepath"
+	"./goo/config"
+	"./goo/output"
+	"./goo/taskqueue"
 	"flag"
 	"fmt"
-	"github.com/fzzy/radix/redis"
 	"log"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
 )
 
-type ConfigStruct struct {
-	RedisNetwork  string
-	RedisAddress  string
-	RedisQueueKey string
-	Tasks         []TaskStruct
-	ErrorCmd      string
-}
-
-type TaskStruct struct {
-	Type    string
-	Script  string
-	Workers int
-}
-
-type QueueTaskStruct struct {
-	Args []string
-}
-
-var verbose bool
+var (
+	configFile string
+	verbose    bool
+)
 
 func init() {
+	flag.StringVar(&configFile, "c", "", "path to config file")
 	flag.BoolVar(&verbose, "v", false, "enable verbose/debugging output")
-	flag.Parse()
 }
 
 func main() {
-	basepath := Basepath{}
-	err := basepath.Update()
+	flag.Parse()
+
+	base, err := basepath.New()
 	if err != nil {
-		log.Fatal("basepath.Update(): ", err)
+		log.Fatal("basepath: ", err)
 	}
 
-	config, err := getConfig(basepath.GetAbsWith("./goophry.config.json"))
+	if configFile == "" {
+		configFile = base.GetPathWith("./goophry.config.json")
+	}
+
+	conf, err := config.New(configFile)
 	if err != nil {
-		log.Fatal("getConfig(): ", err)
+		log.Fatal("config: ", err)
 	}
 
-	var wg sync.WaitGroup
+	out := output.New()
+	out.SetDebug(verbose)
+	out.SetNotifyCmd(conf.ErrorCmd)
 
-	for _, task := range config.Tasks {
-		debugOutput(fmt.Sprintf("Creating %d workers for type %s", task.Workers, task.Type))
-		queue := make(chan QueueTaskStruct)
+	tq := taskqueue.New()
+	tq.SetConfig(conf)
+	tq.SetOutput(out)
 
-		task.Script = basepath.GetAbsWith(task.Script)
+	for _, ct := range conf.Tasks {
+		queue := make(chan taskqueue.QueueTask)
 
-		for i := 0; i < task.Workers; i++ {
-			wg.Add(1)
-			go taskWorker(config, task, queue)
-			debugOutput("Created worker for type " + task.Type)
+		ct.Script = base.GetPathWith(ct.Script)
+
+		for i := 0; i < ct.Workers; i++ {
+			tq.WaitGroup.Add(1)
+			go tq.TaskWorker(ct, queue)
 		}
+		out.Debug(fmt.Sprintf("Created %d workers for type %s", ct.Workers, ct.Type))
 
-		go taskQueueWorker(config, task, queue)
-		debugOutput("Created queue worker for type " + task.Type)
+		tq.WaitGroup.Add(1)
+		go tq.QueueWorker(ct, queue)
+		out.Debug(fmt.Sprintf("Created queue worker for type %s", ct.Type))
 	}
 
-	wg.Wait()
-}
-
-func debugOutput(msg string) {
-	if verbose == true {
-		log.Println(msg)
-	}
-}
-
-func getBasePath() (path string, err error) {
-	path, err = filepath.Abs(filepath.Dir(os.Args[0]))
-	return
-}
-
-func getConfig(path string) (c ConfigStruct, err error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	parser := json.NewDecoder(file)
-	err = parser.Decode(&c)
-	return
-}
-
-func taskWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskStruct) {
-	for t := range queue {
-		debugOutput("Executing task for type " + task.Type)
-		err := executeTask(task.Script, t.Args)
-		if err != nil {
-			errorCmdTask(config.ErrorCmd, task.Script, t.Args, err)
-		}
-	}
-}
-
-func taskQueueWorker(config ConfigStruct, task TaskStruct, queue chan QueueTaskStruct) {
-	rc, err := redis.Dial(config.RedisNetwork, config.RedisAddress)
-	if err != nil {
-		log.Fatal("redis.Dial(): ", err)
-	}
-	defer rc.Close()
-
-	queueKey := config.RedisQueueKey + ":" + task.Type
-
-	for {
-		values, err := rc.Cmd("BLPOP", queueKey, 0).List()
-		if err != nil {
-			errorCmdRedis(config.ErrorCmd, err)
-			continue
-		}
-		if len(values) == 0 {
-			continue
-		}
-
-		for _, value := range values {
-			if value == queueKey {
-				continue
-			}
-
-			debugOutput("Task from redis: " + value)
-
-			t, err := parseQueueTask(value)
-			if err != nil {
-				errorCmd(config.ErrorCmd, fmt.Sprintf("parseQueueTask(): ", err))
-				continue
-			}
-
-			debugOutput("Sending task for type " + task.Type)
-			queue <- t
-		}
-	}
-}
-
-func parseQueueTask(value string) (task QueueTaskStruct, err error) {
-	reader := strings.NewReader(value)
-	parser := json.NewDecoder(reader)
-	err = parser.Decode(&task)
-	return
-}
-
-func executeTask(script string, args []string) error {
-	out, err := exec.Command(script, args...).Output()
-
-	if len(out) != 0 && err == nil {
-		err = fmt.Errorf("%s", out)
-	}
-
-	return err
-}
-
-func errorCmdTask(cmd string, script string, args []string, err error) {
-	msg := fmt.Sprintf("%s %s\n\n%s", script, strings.Join(args, " "), err)
-	errorCmd(cmd, msg)
-}
-
-func errorCmdRedis(cmd string, err error) {
-	msg := fmt.Sprintf("Redis Error:\n%s", err)
-	errorCmd(cmd, msg)
-}
-
-func errorCmd(cmd string, msg string) {
-	debugOutput(fmt.Sprintf("Calling ErrorCmd with: %s", msg))
-
-	cmdExec := fmt.Sprintf(cmd, strconv.Quote(msg))
-	out, err := exec.Command("sh", "-c", cmdExec).Output()
-
-	if len(out) != 0 && err == nil {
-		log.Println(fmt.Sprintf("Error calling ErrorCmd:\n%s\n\nOutput:\n%s", cmdExec, out))
-	}
-
-	if err != nil {
-		log.Println(fmt.Sprintf("Error calling ErrorCmd:\n%s", err))
-	}
-}
-
-type Basepath struct {
-	Path string
-}
-
-func (b *Basepath) Update() (err error) {
-	b.Path, err = filepath.Abs(filepath.Dir(os.Args[0]))
-	return
-}
-
-func (b Basepath) GetAbsWith(file string) (string) {
-	if !filepath.IsAbs(file) {
-		file = b.Path + "/" + file
-	}
-	return file
+	tq.WaitGroup.Wait()
 }
