@@ -31,7 +31,7 @@ go get -u github.com/stretchr/testify
 go test ./goo/*
 ```
 
-Now simply deploy the binary together with the configuration file `goophry.config.json` in the same directory.
+Now simply deploy the binary with the configuration file `goophry.config.json` in the same directory.
 
 
 ### Usage
@@ -47,22 +47,6 @@ Example:
 ```sh
 goophry -v -c /path/to/config.json
 ```
-
-
-## Architecture
-
-A very simplified representation:
-```
-[goophry.php] => [Redis] => [goophry.go] => ./something.php
-                                         => ./something.php
-                                         => ./somethingElse.php
-                                         => ./doThis.py
-```
-
-Goophry is built by using lists in Redis. These are named with the scheme `RedisQueueKey:TaskType`.  
-The example implementation in `goophry.php` shows how to insert entries into Redis accordingly.
-
-You may also want to have a look at the example directory on how to use it.
 
 
 ## Advanced
