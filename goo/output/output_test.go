@@ -1,8 +1,11 @@
 package output
 
 import (
+	"../basepath"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -72,4 +75,30 @@ func TestOutputNotify(t *testing.T) {
 	out.notify(msg)
 
 	assert.NotEqual(t, "", testOutput, "notify() should create output when command created output")
+}
+
+func TestOutputLogfile(t *testing.T) {
+	base, err := basepath.New()
+
+	assert.Nil(t, err, "basepath.New() err should be nil")
+
+	path := base.GetPathWith("./output.test.log")
+	msg := "test output"
+
+	out := New()
+	err = out.SetLogfile(path)
+
+	assert.Nil(t, err, "output.SetLogfile() err should be nil")
+
+	out.SetDebug(true)
+	out.Debug(msg)
+
+	b, err := ioutil.ReadFile(path)
+
+	assert.Nil(t, err, "ioutil.ReadFile() err should be nil")
+
+	assert.Contains(t, string(b), msg, "logfile should contain the debug message")
+
+	err = os.Remove(path)
+	assert.Nil(t, err, "os.Remove() err should be nil")
 }

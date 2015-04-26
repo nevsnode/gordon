@@ -12,6 +12,7 @@ type Config struct {
 	Tasks          []Task
 	ErrorCmd       string
 	StatsInterface string
+	Logfile        string
 }
 
 type Task struct {

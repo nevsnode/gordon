@@ -14,10 +14,12 @@ import (
 var (
 	configFile string
 	verbose    bool
+	logfile    string
 )
 
 func init() {
 	flag.StringVar(&configFile, "c", "", "path to config file")
+	flag.StringVar(&logfile, "l", "", "path to logfile")
 	flag.BoolVar(&verbose, "v", false, "enable verbose/debugging output")
 }
 
@@ -41,6 +43,17 @@ func main() {
 	out := output.New()
 	out.SetDebug(verbose)
 	out.SetNotifyCmd(conf.ErrorCmd)
+
+	if logfile == "" && conf.Logfile != "" {
+		logfile = base.GetPathWith(conf.Logfile)
+	}
+	if logfile != "" {
+		err = out.SetLogfile(logfile)
+
+		if err != nil {
+			log.Fatal("out.SetLogfile(): ", err)
+		}
+	}
 
 	sta := stats.New()
 
