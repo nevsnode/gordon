@@ -50,19 +50,20 @@ You may also want to have a look at the `/example` directory and the section [Ta
 
 Field|Type|Description
 -----|----|-----------
-`RedisNetwork`|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
-`RedisAddress`|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
-`RedisQueueKey`|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
-`Tasks`|string|An array of task objects _(see below)_
-`ErrorCmd`|string|A command which is executed when a task failed _(see below)_
+RedisNetwork|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
+RedisAddress|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
+RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
+Tasks|string|An array of task objects _(see below)_
+ErrorCmd|string|A command which is executed when a task failed _(see below)_
+StatsInterface|string|The adress where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
 
 ##### Task Objects
 
 Field|Type|Description
 -----|----|-----------
-`Type`|string|This field defines the TaskType, it has to be used in `addTask()`
-`Script`|string|The path to the script that will be executed (with the optionally passed arguments)
-`Workers`|int|The number of concurrent instances which execute the configured script
+Type|string|This field defines the TaskType, it has to be used in `addTask()`
+Script|string|The path to the script that will be executed (with the optionally passed arguments)
+Workers|int|The number of concurrent instances that execute the configured script. _(Optional, `1` will be used as default value)_
 
 **ErrorCmd** is a command that will be executed when a task returned an exit status other than 0, or created output.  
 It will then execute the command and uses `Sprintf` to replace `%s` with the error/output.
