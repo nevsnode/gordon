@@ -30,11 +30,12 @@ The Goophry binary accepts the following flags (all are optional):
 Flag|Type|Description
 ----|----|-----------
 v|bool|Set this flag to enable verbose/debugging output
-c|string|Pass this flag with the path of the configuration file (overrides the default `goophry.config.json`)
+c|string|Pass this flag with the path of the configuration file _(Overrides the default `goophry.config.json`)_
+l|string|Pass this flag with the path of the logfile _(Overrides the setting from the configuration file)_
 
 Example:
 ```sh
-goophry -v -c /path/to/config.json
+goophry -v -c /path/to/config.json -l /path/to/logfile.log
 ```
 
 #### 3) Integrate
@@ -53,9 +54,10 @@ Field|Type|Description
 RedisNetwork|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
 RedisAddress|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
 RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
-Tasks|string|An array of task objects _(see below)_
-ErrorCmd|string|A command which is executed when a task failed _(see below)_
+Tasks|string|An array of task objects _(See below)_
+ErrorCmd|string|A command which is executed when a task failed _(See below)_
 StatsInterface|string|The adress where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
+Logfile|string|The path to a logfile, instead of printing messages on the commandline _(Optional, remove or set to an empty string to disable using a logfile)_
 
 ##### Task Objects
 
