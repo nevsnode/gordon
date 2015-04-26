@@ -1,17 +1,16 @@
 Goophry
 =======
 
-Goophry aims to be a very simple and basic task-queue.  
+Goophry aims to be a very simple, basic and lightweight task-queue.  
 It is built utilizing Go, Redis and in this example implementation, PHP.  
 
 There is no direct dependency on PHP, as Goophry just executes commands.
-This allows the usage of any kind of script/application, regardless of the used programming language,
-as long as it runs on the commandline.
+This allows the usage of any kind of script or application, as long as it runs on the commandline.
 
 
 ## Getting Started
 
-### Building
+#### 1) Build
 
 ```sh
 # get/update necessary libraries
@@ -21,37 +20,33 @@ go get -u github.com/fzzy/radix/redis
 go build goophry.go
 ```
 
-**To run the tests:**
+#### 2) Run
 
-```sh
-# get/update necessary libraries
-go get -u github.com/stretchr/testify
-
-# run tests
-go test ./goo/*
-```
-
-Now simply deploy the binary with the configuration file `goophry.config.json` in the same directory.
-
-
-### Usage
+Now just deploy the binary with the configuration file `goophry.config.json` in the same directory.
+Take a look at the section [Configuration](#configuration) to understand the meaning of all fields.  
 
 The Goophry binary accepts the following flags (all are optional):
 
 Flag|Type|Description
 ----|----|-----------
 v|bool|Set this flag to enable verbose/debugging output
-c|string|Pass this flag with the path of the configuration file (overrides the default location)
+c|string|Pass this flag with the path of the configuration file (overrides the default `goophry.config.json`)
 
 Example:
 ```sh
 goophry -v -c /path/to/config.json
 ```
 
+#### 3) Integrate
 
-## Advanced
+The last step is to integrate Goophry, so that you can trigger the execution of tasks, defined in your configuration.  
+To archive that it is only necessary to insert entries into Redis lists.
+For this purpose there is already an example implemention in PHP (`goophry.php`).
 
-### Configuration Options
+You may also want to have a look at the `/example` directory and the section [Task Arguments](#task-arguments) on how to use it.
+
+
+## Configuration
 
 Field|Type|Description
 -----|----|-----------
@@ -74,7 +69,18 @@ It will then execute the command and uses `Sprintf` to replace `%s` with the err
 The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
 
 
-### Task Arguments
+## Testing
+
+```sh
+# get/update necessary libraries
+go get -u github.com/stretchr/testify
+
+# run tests
+go test ./goo/*
+```
+
+
+## Task Arguments
 
 In the PHP example, arguments are passed to `addTask()` in the same order as they
 will be passed to the configured script.
@@ -90,7 +96,7 @@ Groophry will call the configured script (e.g. "foobar.php") like this:
 /path/to/foobar.php "123" "456"
 ```
 
-**Important:** As it is not possible to pass things like objects to the scripts via commandline,
+**Note:** As it is not possible to pass things like objects to the scripts via commandline,
 they may be json-encoded before, as in the example class.
 
 For example a call like this:
@@ -103,3 +109,27 @@ Will then be executed like this:
 ```
 /path/to/foobar.php "{\"user\":123}"
 ```
+
+
+## License
+The MIT License (MIT)
+
+Copyright (c) 2015 Sven Weintuch
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
