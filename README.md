@@ -42,9 +42,10 @@ goophry -v -c /path/to/config.json -l /path/to/logfile.log
 
 #### 3) Integrate
 
-The last step is to integrate Goophry, so that you can trigger the execution of tasks, defined in your configuration.  
-To archive that it is only necessary to insert entries into Redis lists.
-For this purpose there is already an example implemention in PHP (`goophry.php`).
+The last step is to integrate Goophry, so that you can trigger the execution of tasks as defined in your configuration.
+To archive that it is necessary to push specific entries into Redis lists (using [RPUSH](http://redis.io/commands/rpush)).
+
+There is already an example implementation in PHP for this purpose (`goophry.php`).
 
 You may also want to have a look at the `/example` directory and the section [Task Arguments](#task-arguments) on how to use it.
 
@@ -96,7 +97,7 @@ That means when calling the addTask-method like this:
 $goophry->addTask('foobar', '123', '456');
 ```
 
-Groophry will call the configured script (e.g. "foobar.php") like this:
+Goophry will call the configured script (e.g. "foobar.php") like this:
 ```
 /path/to/foobar.php "123" "456"
 ```
