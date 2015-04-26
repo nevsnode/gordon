@@ -9,5 +9,6 @@
             "Workers": 2
         }
     ],
-    "ErrorCmd": "echo %s >> /tmp/goophry.error.log"
+    "ErrorCmd": "echo %s >> /tmp/goophry.error.log",
+    "StatsInterface": "127.0.0.1:8080"
 }
