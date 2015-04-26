@@ -10,5 +10,6 @@
         }
     ],
     "ErrorCmd": "echo %s >> /tmp/goophry.error.log",
-    "StatsInterface": "127.0.0.1:8080"
+    "StatsInterface": "127.0.0.1:8080",
+    "Logfile": "./goophry.log"
 }
