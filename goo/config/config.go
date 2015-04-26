@@ -11,6 +11,7 @@ type Config struct {
 	RedisQueueKey string
 	Tasks         []Task
 	ErrorCmd      string
+	StatsInterface string
 }
 
 type Task struct {

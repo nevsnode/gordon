@@ -3,6 +3,7 @@ package taskqueue
 import (
 	"../config"
 	"../output"
+	"../stats"
 	"encoding/json"
 	"fmt"
 	"github.com/fzzy/radix/redis"
@@ -36,6 +37,7 @@ type Taskqueue struct {
 	WaitGroup sync.WaitGroup
 	config    config.Config
 	output    output.Output
+	stats     *stats.Stats
 }
 
 func New() Taskqueue {
@@ -48,6 +50,10 @@ func (tq *Taskqueue) SetConfig(c config.Config) {
 
 func (tq *Taskqueue) SetOutput(o output.Output) {
 	tq.output = o
+}
+
+func (tq *Taskqueue) SetStats(s *stats.Stats) {
+	tq.stats = s
 }
 
 func (tq Taskqueue) QueueWorker(ct config.Task, queue chan QueueTask) {
@@ -92,6 +98,7 @@ func (tq Taskqueue) QueueWorker(ct config.Task, queue chan QueueTask) {
 func (tq Taskqueue) TaskWorker(ct config.Task, queue chan QueueTask) {
 	for task := range queue {
 		tq.output.Debug(fmt.Sprintf("Executing task type %s with payload %s", ct.Type, task.Args))
+		tq.stats.IncrTaskCount(ct.Type)
 
 		err := task.execute(ct.Script)
 

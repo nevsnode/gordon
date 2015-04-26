@@ -5,6 +5,7 @@ import (
 	"./goo/config"
 	"./goo/output"
 	"./goo/taskqueue"
+	"./goo/stats"
 	"flag"
 	"fmt"
 	"log"
@@ -41,9 +42,12 @@ func main() {
 	out.SetDebug(verbose)
 	out.SetNotifyCmd(conf.ErrorCmd)
 
+	sta := stats.New()
+
 	tq := taskqueue.New()
 	tq.SetConfig(conf)
 	tq.SetOutput(out)
+	tq.SetStats(&sta)
 
 	for _, ct := range conf.Tasks {
 		queue := make(chan taskqueue.QueueTask)
@@ -63,6 +67,13 @@ func main() {
 		tq.WaitGroup.Add(1)
 		go tq.QueueWorker(ct, queue)
 		out.Debug(fmt.Sprintf("Created queue worker for type %s", ct.Type))
+
+		sta.InitTaskCount(ct.Type)
+	}
+
+	if conf.StatsInterface != "" {
+		out.Debug("Serving stats on http://" + conf.StatsInterface)
+		go sta.ServeHttp(conf.StatsInterface, out)
 	}
 
 	tq.WaitGroup.Wait()
