@@ -4,13 +4,12 @@ Goophry
 Goophry aims to be a very simple, basic and lightweight task-queue.  
 It is built utilizing Go, Redis and in this example implementation, PHP.  
 
-There is no direct dependency on PHP, as Goophry just executes commands.
-This allows the usage of any kind of script or application, as long as it runs on the commandline.
+Goophry just executes commands, which allows the usage of any kind of script or application, as long as it runs on the commandline.
 
 
 ## Getting Started
 
-#### 1) Build
+#### 1) Setup
 
 ```sh
 # get/update necessary libraries
@@ -20,12 +19,15 @@ go get -u github.com/fzzy/radix/redis
 go build goophry.go
 ```
 
+Then create a configuration file. You'll probably just want to copy the example file and name it `goophry.config.json`.
+Change the fields in the file acordingly and deploy in the same directory as the generated binary.  
+
+Take a look at the section [Configuration](#configuration) to understand the meaning of all fields.
+
 #### 2) Run
 
-Now just deploy the binary with the configuration file `goophry.config.json` in the same directory.
-Take a look at the section [Configuration](#configuration) to understand the meaning of all fields.  
-
-The Goophry binary accepts the following flags (all are optional):
+Now just fire up Goophry.
+The application accepts the following flags (all are optional):
 
 Flag|Type|Description
 ----|----|-----------
