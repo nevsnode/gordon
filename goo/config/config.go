@@ -6,11 +6,11 @@ import (
 )
 
 type Config struct {
-	RedisNetwork  string
-	RedisAddress  string
-	RedisQueueKey string
-	Tasks         []Task
-	ErrorCmd      string
+	RedisNetwork   string
+	RedisAddress   string
+	RedisQueueKey  string
+	Tasks          []Task
+	ErrorCmd       string
 	StatsInterface string
 }
 
