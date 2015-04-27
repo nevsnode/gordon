@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 )
 
-// A Basepath holds the current absolute directory of the application, and methods to return it.
+// A Basepath holds the current absolute directory of the application, and routines to return it.
 type Basepath struct {
 	Path string
 }
 
 // New returns a new Basepath instance.
+// It may also return an error, when the path could not be determined.
 func New() (b Basepath, err error) {
 	b.Path, err = getBasePath()
 	return
