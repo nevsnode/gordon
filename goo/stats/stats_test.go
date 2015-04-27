@@ -58,7 +58,7 @@ func TestStatsHttp(t *testing.T) {
 
 	assert.Nil(t, err, "err from http.Get should be nil")
 
-	sr2 := StatsResponse{}
+	sr2 := statsResponse{}
 	parser := json.NewDecoder(resp.Body)
 	err = parser.Decode(&sr2)
 

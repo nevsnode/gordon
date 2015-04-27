@@ -15,9 +15,9 @@ type Stats struct {
 	taskCount    map[string]int64
 }
 
-// StatsResponse is the response that will be returned from the HTTP-server,
+// statsResponse is the response that will be returned from the HTTP-server,
 // containing the statistical data.
-type StatsResponse struct {
+type statsResponse struct {
 	Runtime   int64
 	TaskCount map[string]int64
 }
@@ -42,15 +42,15 @@ func (s *Stats) IncrTaskCount(task string) {
 	s.taskCount[task]++
 }
 
-// getStats returns an instance of the StatsResponse which the HTTP-server should reply with.
-func (s Stats) getStats() StatsResponse {
-	return StatsResponse{
+// getStats returns an instance of the statsResponse which the HTTP-server should reply with.
+func (s Stats) getStats() statsResponse {
+	return statsResponse{
 		Runtime:   s.getRuntime(),
 		TaskCount: s.taskCount,
 	}
 }
 
-// ServeHttp spawns a HTTP-server that responds with a StatsResponse in JSON.
+// ServeHttp spawns a HTTP-server that responds with a statsResponse in JSON.
 // In case of an error, it will use the notify-functionality from output, since this routine
 // will likely be run as a go-routine.
 func (s Stats) ServeHttp(iface string, out output.Output) {
