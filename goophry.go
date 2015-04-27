@@ -1,3 +1,6 @@
+// This is the Goophry main application.
+// It parses all commandline flags, creates instances of all necessary packages
+// and fires up all worker go-routines.
 package main
 
 import (
@@ -31,6 +34,7 @@ func main() {
 		log.Fatal("basepath: ", err)
 	}
 
+	// when no configuration file was passed as a flag, use a default location
 	if configFile == "" {
 		configFile = base.GetPathWith("./goophry.config.json")
 	}
@@ -44,9 +48,12 @@ func main() {
 	out.SetDebug(verbose)
 	out.SetNotifyCmd(conf.ErrorCmd)
 
+	// when no logfile was passed as a flag and one was set in the configuration,
+	// use that one instead
 	if logfile == "" && conf.Logfile != "" {
 		logfile = base.GetPathWith(conf.Logfile)
 	}
+
 	if logfile != "" {
 		err = out.SetLogfile(logfile)
 
