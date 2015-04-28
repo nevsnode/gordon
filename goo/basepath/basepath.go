@@ -34,7 +34,7 @@ func (b Basepath) GetPath() string {
 // If the given file is relative the current absolute path will be prepended.
 func (b Basepath) GetPathWith(file string) string {
 	if !filepath.IsAbs(file) {
-		file = b.Path + "/" + file
+		file = filepath.Clean(b.Path + "/" + file)
 	}
 	return file
 }
