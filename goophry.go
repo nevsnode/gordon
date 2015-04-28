@@ -33,7 +33,7 @@ func main() {
 		log.Fatal("basepath: ", err)
 	}
 
-	// when no configuration file was passed as a flag, use a default location
+	// When no configuration file was passed as a flag, use the default location.
 	if configFile == "" {
 		configFile = base.GetPathWith("./goophry.config.json")
 	}
@@ -47,8 +47,8 @@ func main() {
 	out.SetDebug(verbose)
 	out.SetNotifyCmd(conf.ErrorCmd)
 
-	// when no logfile was passed as a flag and one was set in the configuration,
-	// use that one instead
+	// When no logfile was passed as a flag but it was set in the configuration,
+	// use that one instead.
 	if logfile == "" && conf.Logfile != "" {
 		logfile = base.GetPathWith(conf.Logfile)
 	}
@@ -80,6 +80,7 @@ func main() {
 		sta.InitTaskCount(ct.Type)
 	}
 
+	// If the StatsInterface was set, start the HTTP-server for it.
 	if conf.StatsInterface != "" {
 		out.Debug("Serving stats on http://" + conf.StatsInterface)
 		go sta.ServeHttp(conf.StatsInterface, out)
