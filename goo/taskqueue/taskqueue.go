@@ -18,13 +18,13 @@ import (
 	"sync"
 )
 
-// A QueueTask is the task as it is enqueued in a Redis-list.
-type QueueTask struct {
+// A queueTask is the task as it is enqueued in a Redis-list.
+type queueTask struct {
 	Args []string // list of arguments passed to the defined script/application
 }
 
-// execute executes the passed script/application with the arguments from the QueueTask object.
-func (q QueueTask) execute(script string) error {
+// execute executes the passed script/application with the arguments from the queueTask object.
+func (q queueTask) execute(script string) error {
 	out, err := exec.Command(script, q.Args...).Output()
 
 	if len(out) != 0 && err == nil {
@@ -35,8 +35,8 @@ func (q QueueTask) execute(script string) error {
 }
 
 // parseQueueTask parses the string-value from a Redis-list entry.
-// It returns an object of QueueTask and a possible error if parsing failed.
-func parseQueueTask(value string) (task QueueTask, err error) {
+// It returns an object of queueTask and a possible error if parsing failed.
+func parseQueueTask(value string) (task queueTask, err error) {
 	reader := strings.NewReader(value)
 	parser := json.NewDecoder(reader)
 	err = parser.Decode(&task)
@@ -47,7 +47,7 @@ func parseQueueTask(value string) (task QueueTask, err error) {
 // It also offers routines to set the config-, output- and stats-objects,
 // which are used from the worker-routines.
 type Taskqueue struct {
-	WaitGroup sync.WaitGroup // wait group used to handle a proper application shutdown, in case of any Redis (connection) errors
+	waitGroup sync.WaitGroup // wait group used to handle a proper application shutdown, in case of any Redis (connection) errors
 	config    config.Config  // config object, storing, for instance, connection data
 	output    output.Output  // output object used to write debug-/error-messages, mostly for notifying about errors on task-execution
 	stats     *stats.Stats   // stats object for gathering usage data
@@ -73,10 +73,31 @@ func (tq *Taskqueue) SetStats(s *stats.Stats) {
 	tq.stats = s
 }
 
-// QueueWorker connects to Redis and listens to the Redis-list for the according config.Task.
-// This routine gets entries from Redis, tries to parse them into QueueTask and sends them
-// to the according instances of TaskWorker.
-func (tq Taskqueue) QueueWorker(ct config.Task, queue chan QueueTask) {
+// CreateWorker creates all worker go-routines.
+func (tq Taskqueue) CreateWorker(ct config.Task) {
+	queue := make(chan queueTask)
+
+	for i := 0; i < ct.Workers; i++ {
+		tq.waitGroup.Add(1)
+		go tq.taskWorker(ct, queue)
+	}
+	tq.output.Debug(fmt.Sprintf("Created %d workers for type %s", ct.Workers, ct.Type))
+
+	tq.waitGroup.Add(1)
+	go tq.queueWorker(ct, queue)
+	tq.output.Debug(fmt.Sprintf("Created queue worker for type %s", ct.Type))
+}
+
+// Wait waits for the waitGroup to keep the application running, for as long as there
+// are any go-routines active.
+func (tq Taskqueue) Wait() {
+	tq.waitGroup.Wait()
+}
+
+// queueWorker connects to Redis and listens to the Redis-list for the according config.Task.
+// This routine gets entries from Redis, tries to parse them into queueTask and sends them
+// to the according instances of taskWorker.
+func (tq Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 	rc, err := redis.Dial(tq.config.RedisNetwork, tq.config.RedisAddress)
 	if err != nil {
 		tq.output.StopError(fmt.Sprintf("redis.Dial(): %s", err))
@@ -90,7 +111,7 @@ func (tq Taskqueue) QueueWorker(ct config.Task, queue chan QueueTask) {
 		if err != nil {
 			// Errors here will likely be connection errors. Therefore we'll just
 			// notify about the error and break the loop, which will stop the QueueWorker
-			// and all related TaskWorker instances for this config.Task.
+			// and all related taskWorker instances for this config.Task.
 			msg := fmt.Sprintf("Redis Error:\n%s\nStopping task %s.", err, ct.Type)
 			tq.output.NotifyError(msg)
 			break
@@ -120,12 +141,12 @@ func (tq Taskqueue) QueueWorker(ct config.Task, queue chan QueueTask) {
 	}
 
 	close(queue)
-	tq.WaitGroup.Done()
+	tq.waitGroup.Done()
 }
 
-// TaskWorker waits for QueueTask items and executes them. If they return an error,
+// taskWorker waits for queueTask items and executes them. If they return an error,
 // it the output object to notify about that error.
-func (tq Taskqueue) TaskWorker(ct config.Task, queue chan QueueTask) {
+func (tq Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
 	for task := range queue {
 		tq.output.Debug(fmt.Sprintf("Executing task type %s with payload %s", ct.Type, task.Args))
 		tq.stats.IncrTaskCount(ct.Type)
@@ -138,5 +159,5 @@ func (tq Taskqueue) TaskWorker(ct config.Task, queue chan QueueTask) {
 		}
 	}
 
-	tq.WaitGroup.Done()
+	tq.waitGroup.Done()
 }

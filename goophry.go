@@ -1,6 +1,6 @@
 // This is the Goophry main application.
 // It parses all commandline flags, creates instances of all necessary packages
-// and fires up all worker go-routines.
+// and triggers the creation of all worker go-routines.
 package main
 
 import (
@@ -10,7 +10,6 @@ import (
 	"./goo/stats"
 	"./goo/taskqueue"
 	"flag"
-	"fmt"
 	"log"
 )
 
@@ -70,23 +69,13 @@ func main() {
 	tq.SetStats(&sta)
 
 	for _, ct := range conf.Tasks {
-		queue := make(chan taskqueue.QueueTask)
-
 		ct.Script = base.GetPathWith(ct.Script)
 
 		if ct.Workers <= 1 {
 			ct.Workers = 1
 		}
 
-		for i := 0; i < ct.Workers; i++ {
-			tq.WaitGroup.Add(1)
-			go tq.TaskWorker(ct, queue)
-		}
-		out.Debug(fmt.Sprintf("Created %d workers for type %s", ct.Workers, ct.Type))
-
-		tq.WaitGroup.Add(1)
-		go tq.QueueWorker(ct, queue)
-		out.Debug(fmt.Sprintf("Created queue worker for type %s", ct.Type))
+		tq.CreateWorker(ct)
 
 		sta.InitTaskCount(ct.Type)
 	}
@@ -96,5 +85,5 @@ func main() {
 		go sta.ServeHttp(conf.StatsInterface, out)
 	}
 
-	tq.WaitGroup.Wait()
+	tq.Wait()
 }

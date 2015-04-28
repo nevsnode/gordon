@@ -7,7 +7,7 @@ import (
 )
 
 func TestQueueTask(t *testing.T) {
-	qt := QueueTask{}
+	qt := queueTask{}
 
 	script := "/usr/bin/printf"
 	msg := "test output"
@@ -36,7 +36,7 @@ func TestParseQueueTask(t *testing.T) {
 
 	assert.Nil(t, err, "err should be nil")
 
-	qt := QueueTask{}
+	qt := queueTask{}
 	qt.Args = make([]string, 1)
 	qt.Args[0] = "_valid"
 
