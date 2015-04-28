@@ -47,15 +47,20 @@ func parseQueueTask(value string) (task queueTask, err error) {
 // It also offers routines to set the config-, output- and stats-objects,
 // which are used from the worker-routines.
 type Taskqueue struct {
-	waitGroup sync.WaitGroup // wait group used to handle a proper application shutdown, in case of any Redis (connection) errors
+	waitGroup sync.WaitGroup // wait group used to handle a proper application shutdown
 	config    config.Config  // config object, storing, for instance, connection data
-	output    output.Output  // output object used to write debug-/error-messages, mostly for notifying about errors on task-execution
+	output    output.Output  // output object for handling debug-/error-messages and notifying about task execution errors
 	stats     *stats.Stats   // stats object for gathering usage data
+	quit      chan int       // channel used to gracefully shutdown all go-routines
 }
 
 // New returns a new instance of a Taskqueue
 func New() Taskqueue {
-	return Taskqueue{}
+	q := make(chan int)
+
+	return Taskqueue{
+		quit: q,
+	}
 }
 
 // SetConfig sets the config object
@@ -74,7 +79,7 @@ func (tq *Taskqueue) SetStats(s *stats.Stats) {
 }
 
 // CreateWorker creates all worker go-routines.
-func (tq Taskqueue) CreateWorker(ct config.Task) {
+func (tq *Taskqueue) CreateWorker(ct config.Task) {
 	queue := make(chan queueTask)
 
 	for i := 0; i < ct.Workers; i++ {
@@ -90,14 +95,19 @@ func (tq Taskqueue) CreateWorker(ct config.Task) {
 
 // Wait waits for the waitGroup to keep the application running, for as long as there
 // are any go-routines active.
-func (tq Taskqueue) Wait() {
+func (tq *Taskqueue) Wait() {
 	tq.waitGroup.Wait()
+}
+
+// Stop triggers the graceful shutdown of all worker-routines.
+func (tq *Taskqueue) Stop() {
+	close(tq.quit)
 }
 
 // queueWorker connects to Redis and listens to the Redis-list for the according config.Task.
 // This routine gets entries from Redis, tries to parse them into queueTask and sends them
 // to the according instances of taskWorker.
-func (tq Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
+func (tq *Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 	rc, err := redis.Dial(tq.config.RedisNetwork, tq.config.RedisAddress)
 	if err != nil {
 		tq.output.StopError(fmt.Sprintf("redis.Dial(): %s", err))
@@ -106,14 +116,30 @@ func (tq Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 
 	queueKey := tq.config.RedisQueueKey + ":" + ct.Type
 
+	// This go-routine waits for the quit-channel to close, which signals to shutdown of
+	// all worker-routines. We archive that by closing the Redis-connection and catching that error.
+	shutdown := false
+	go func() {
+		_, ok := <-tq.quit
+		if !ok {
+			shutdown = true
+			rc.Close()
+			tq.output.Debug(fmt.Sprintf("Shutting down workers for type %s", ct.Type))
+		}
+	}()
+
 	for {
 		values, err := rc.Cmd("BLPOP", queueKey, 0).List()
 		if err != nil {
 			// Errors here will likely be connection errors. Therefore we'll just
-			// notify about the error and break the loop, which will stop the QueueWorker
+			// notify about the error and break the loop, which will stop the queueWorker
 			// and all related taskWorker instances for this config.Task.
-			msg := fmt.Sprintf("Redis Error:\n%s\nStopping task %s.", err, ct.Type)
-			tq.output.NotifyError(msg)
+			// When shutdown == true, we're currently handling a graceful shutdown,
+			// so we won't notify in that case and just break the loop.
+			if shutdown == false {
+				msg := fmt.Sprintf("Redis Error:\n%s\nStopping task %s.", err, ct.Type)
+				tq.output.NotifyError(msg)
+			}
 			break
 		}
 
@@ -146,7 +172,7 @@ func (tq Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 
 // taskWorker waits for queueTask items and executes them. If they return an error,
 // it the output object to notify about that error.
-func (tq Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
+func (tq *Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
 	for task := range queue {
 		tq.output.Debug(fmt.Sprintf("Executing task type %s with payload %s", ct.Type, task.Args))
 		tq.stats.IncrTaskCount(ct.Type)
