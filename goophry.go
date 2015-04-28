@@ -11,6 +11,9 @@ import (
 	"./goo/taskqueue"
 	"flag"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
@@ -85,6 +88,15 @@ func main() {
 		out.Debug("Serving stats on http://" + conf.StatsInterface)
 		go sta.ServeHttp(conf.StatsInterface, out)
 	}
+
+	// Start another go-routine to initiate the graceful shutdown of all taskqueue-workers,
+	// when the application shall be terminated.
+	cc := make(chan os.Signal)
+	signal.Notify(cc, os.Interrupt, os.Kill, syscall.SIGTERM)
+	go func() {
+		<-cc
+		tq.Stop()
+	}()
 
 	tq.Wait()
 }
