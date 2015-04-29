@@ -73,11 +73,6 @@ func main() {
 
 	for _, ct := range conf.Tasks {
 		ct.Script = base.GetPathWith(ct.Script)
-
-		if ct.Workers <= 1 {
-			ct.Workers = 1
-		}
-
 		tq.CreateWorkers(ct)
 
 		sta.InitTask(ct.Type)

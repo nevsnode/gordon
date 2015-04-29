@@ -82,6 +82,10 @@ func (tq *Taskqueue) SetStats(s *stats.Stats) {
 func (tq *Taskqueue) CreateWorkers(ct config.Task) {
 	queue := make(chan queueTask)
 
+	if ct.Workers <= 1 {
+		ct.Workers = 1
+	}
+
 	for i := 0; i < ct.Workers; i++ {
 		tq.waitGroup.Add(1)
 		go tq.taskWorker(ct, queue)
