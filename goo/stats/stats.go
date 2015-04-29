@@ -2,7 +2,6 @@
 package stats
 
 import (
-	"../output"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -53,7 +52,7 @@ func (s Stats) getStats() statsResponse {
 // ServeHttp spawns a HTTP-server that responds with a statsResponse in JSON.
 // In case of an error, it will use the notify-functionality from output, since this routine
 // will likely be run as a go-routine.
-func (s Stats) ServeHttp(iface string, out output.Output) {
+func (s Stats) ServeHttp(iface string) error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		b, err := json.Marshal(s.getStats())
 		if err != nil {
@@ -65,11 +64,7 @@ func (s Stats) ServeHttp(iface string, out output.Output) {
 		fmt.Fprintf(w, fmt.Sprintf("%s", b))
 	})
 
-	err := http.ListenAndServe(iface, nil)
-	if err != nil {
-		msg := fmt.Sprintf("stats.ServeHttp(): %s", err)
-		out.NotifyError(msg)
-	}
+	return http.ListenAndServe(iface, nil)
 }
 
 // getRuntime returns the runtime of the application in seconds

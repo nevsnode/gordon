@@ -10,6 +10,7 @@ import (
 	"./goo/stats"
 	"./goo/taskqueue"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -80,8 +81,14 @@ func main() {
 
 	// If the StatsInterface was set, start the HTTP-server for it.
 	if conf.StatsInterface != "" {
-		out.Debug("Serving stats on http://" + conf.StatsInterface)
-		go sta.ServeHttp(conf.StatsInterface, out)
+		go func() {
+			out.Debug("Serving stats on http://" + conf.StatsInterface)
+			err := sta.ServeHttp(conf.StatsInterface)
+
+			if err != nil {
+				out.NotifyError(fmt.Sprintf("stats.ServeHttp(): %s", err))
+			}
+		}()
 	}
 
 	// Start another go-routine to initiate the graceful shutdown of all taskqueue-workers,

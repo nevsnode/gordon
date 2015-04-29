@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"../output"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -43,9 +42,8 @@ func TestStats(t *testing.T) {
 
 func TestStatsHttp(t *testing.T) {
 	s := NewStats()
-	out := output.NewOutput()
 	iface := "127.0.0.1:3333"
-	go s.ServeHttp(iface, out)
+	go s.ServeHttp(iface)
 
 	s.InitTask(testTaskType)
 	s.IncrTaskCount(testTaskType)
