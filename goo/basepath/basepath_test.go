@@ -8,7 +8,7 @@ import (
 )
 
 func TestBasepath(t *testing.T) {
-	base, err := New()
+	base, err := NewBasepath()
 
 	require.Nil(t, err, "error should be nil")
 

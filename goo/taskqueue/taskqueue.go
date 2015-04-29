@@ -54,8 +54,8 @@ type Taskqueue struct {
 	quit      chan int       // channel used to gracefully shutdown all go-routines
 }
 
-// New returns a new instance of a Taskqueue
-func New() Taskqueue {
+// NewTaskqueue returns a new instance of a Taskqueue
+func NewTaskqueue() Taskqueue {
 	q := make(chan int)
 
 	return Taskqueue{
@@ -78,8 +78,8 @@ func (tq *Taskqueue) SetStats(s *stats.Stats) {
 	tq.stats = s
 }
 
-// CreateWorker creates all worker go-routines.
-func (tq *Taskqueue) CreateWorker(ct config.Task) {
+// CreateWorkers creates all worker go-routines.
+func (tq *Taskqueue) CreateWorkers(ct config.Task) {
 	queue := make(chan queueTask)
 
 	for i := 0; i < ct.Workers; i++ {

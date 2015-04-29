@@ -22,18 +22,18 @@ type statsResponse struct {
 	TaskCount map[string]int64
 }
 
-// New returns a new instance of Stats.
-func New() Stats {
+// NewStats returns a new instance of Stats.
+func NewStats() Stats {
 	return Stats{
 		runtimeStart: getNowUnix(),
 		taskCount:    make(map[string]int64),
 	}
 }
 
-// InitTaskCount initialises the task-counter for a certain task.
+// InitTask initialises the task-counter for a certain task.
 // The counter should be initialised so that it will be returned in the HTTP response,
 // even when it is 0.
-func (s *Stats) InitTaskCount(task string) {
+func (s *Stats) InitTask(task string) {
 	s.taskCount[task] = 0
 }
 

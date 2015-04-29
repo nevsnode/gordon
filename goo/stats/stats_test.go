@@ -12,7 +12,7 @@ import (
 var testTaskType = "mytask"
 
 func TestStats(t *testing.T) {
-	s := New()
+	s := NewStats()
 	now := getNowUnix()
 	tnow := time.Now().Unix()
 
@@ -24,7 +24,7 @@ func TestStats(t *testing.T) {
 
 	assert.Len(t, sr.TaskCount, 0, "TaskCount length should be 0")
 
-	s.InitTaskCount(testTaskType)
+	s.InitTask(testTaskType)
 	sr = s.getStats()
 
 	assert.Len(t, sr.TaskCount, 1, "TaskCount length after first init should be 1")
@@ -42,12 +42,12 @@ func TestStats(t *testing.T) {
 }
 
 func TestStatsHttp(t *testing.T) {
-	s := New()
-	out := output.New()
+	s := NewStats()
+	out := output.NewOutput()
 	iface := "127.0.0.1:3333"
 	go s.ServeHttp(iface, out)
 
-	s.InitTaskCount(testTaskType)
+	s.InitTask(testTaskType)
 	s.IncrTaskCount(testTaskType)
 
 	sr := s.getStats()

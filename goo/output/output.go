@@ -32,8 +32,8 @@ type Output struct {
 	logger    outputLogger
 }
 
-// New returns a new instance of Output, writing the messages to stdout per default.
-func New() Output {
+// NewOutput returns a new instance of Output, writing the messages to stdout per default.
+func NewOutput() Output {
 	l := log.New(os.Stdout, "", log.LstdFlags)
 
 	return Output{

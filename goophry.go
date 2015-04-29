@@ -31,7 +31,7 @@ func init() {
 func main() {
 	flag.Parse()
 
-	base, err := basepath.New()
+	base, err := basepath.NewBasepath()
 	if err != nil {
 		log.Fatal("basepath: ", err)
 	}
@@ -41,12 +41,12 @@ func main() {
 		configFile = base.GetPathWith("./goophry.config.json")
 	}
 
-	conf, err := config.New(configFile)
+	conf, err := config.NewConfig(configFile)
 	if err != nil {
 		log.Fatal("config: ", err)
 	}
 
-	out := output.New()
+	out := output.NewOutput()
 	out.SetDebug(verbose)
 	out.SetNotifyCmd(conf.ErrorCmd)
 
@@ -64,9 +64,9 @@ func main() {
 		}
 	}
 
-	sta := stats.New()
+	sta := stats.NewStats()
 
-	tq := taskqueue.New()
+	tq := taskqueue.NewTaskqueue()
 	tq.SetConfig(conf)
 	tq.SetOutput(out)
 	tq.SetStats(&sta)
@@ -78,9 +78,9 @@ func main() {
 			ct.Workers = 1
 		}
 
-		tq.CreateWorker(ct)
+		tq.CreateWorkers(ct)
 
-		sta.InitTaskCount(ct.Type)
+		sta.InitTask(ct.Type)
 	}
 
 	// If the StatsInterface was set, start the HTTP-server for it.

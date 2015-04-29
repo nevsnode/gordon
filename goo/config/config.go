@@ -24,9 +24,9 @@ type Task struct {
 	Workers int    // number of concurrent go-routines, available for this task
 }
 
-// New reads the provided file and returns a Config instance with the values from it.
+// NewConfig reads the provided file and returns a Config instance with the values from it.
 // It may also return an error, when the file doesn't exist, or the content could not be parsed.
-func New(path string) (c Config, err error) {
+func NewConfig(path string) (c Config, err error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return
