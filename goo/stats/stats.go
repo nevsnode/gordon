@@ -49,24 +49,6 @@ func (s Stats) getStats() statsResponse {
 	}
 }
 
-// ServeHttp spawns a HTTP-server that responds with a statsResponse in JSON.
-// In case of an error, it will use the notify-functionality from output, since this routine
-// will likely be run as a go-routine.
-func (s Stats) ServeHttp(iface string) error {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		b, err := json.Marshal(s.getStats())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json; charset=utf8")
-		fmt.Fprintf(w, fmt.Sprintf("%s", b))
-	})
-
-	return http.ListenAndServe(iface, nil)
-}
-
 // getRuntime returns the runtime of the application in seconds
 func (s Stats) getRuntime() int64 {
 	return getNowUnix() - s.runtimeStart
@@ -75,4 +57,28 @@ func (s Stats) getRuntime() int64 {
 // getNowUnix returns the current unix timestamp
 func getNowUnix() int64 {
 	return time.Now().Unix()
+}
+
+// ServeHttp spawns an HTTP-server, that responds with a statsResponse in JSON.
+func (s Stats) ServeHttp(iface string, pattern string) error {
+	http.HandleFunc(pattern, s.httpHandle)
+	return http.ListenAndServe(iface, nil)
+}
+
+// ServeHttps spawns an HTTP-server, that responds with a statsResponse in JSON, expecting HTTPS connections.
+func (s Stats) ServeHttps(iface string, pattern string, cert string, key string) error {
+	http.HandleFunc(pattern, s.httpHandle)
+	return http.ListenAndServeTLS(iface, cert, key, nil)
+}
+
+// httpHandle is the handler that actually responds with the JSON statsResponse.
+func (s Stats) httpHandle(w http.ResponseWriter, r *http.Request) {
+	b, err := json.Marshal(s.getStats())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf8")
+	fmt.Fprintf(w, fmt.Sprintf("%s", b))
 }

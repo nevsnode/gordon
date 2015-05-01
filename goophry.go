@@ -81,9 +81,23 @@ func main() {
 
 	// If the StatsInterface was set, start the HTTP-server for it.
 	if conf.StatsInterface != "" {
+		if conf.StatsPattern == "" {
+			conf.StatsPattern = "/"
+		}
+
 		go func() {
-			out.Debug("Serving stats on http://" + conf.StatsInterface)
-			err := sta.ServeHttp(conf.StatsInterface)
+			var err error
+
+			if conf.StatsTLSCertFile != "" {
+				conf.StatsTLSCertFile = base.GetPathWith(conf.StatsTLSCertFile)
+				conf.StatsTLSKeyFile = base.GetPathWith(conf.StatsTLSKeyFile)
+
+				out.Debug("Serving stats on https://" + conf.StatsInterface + conf.StatsPattern)
+				err = sta.ServeHttps(conf.StatsInterface, conf.StatsPattern, conf.StatsTLSCertFile, conf.StatsTLSKeyFile)
+			} else {
+				out.Debug("Serving stats on http://" + conf.StatsInterface + conf.StatsPattern)
+				err = sta.ServeHttp(conf.StatsInterface, conf.StatsPattern)
+			}
 
 			if err != nil {
 				out.NotifyError(fmt.Sprintf("stats.ServeHttp(): %s", err))

@@ -59,8 +59,11 @@ RedisAddress|string|Setting needed to connect to Redis (as required by [radix](h
 RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 Tasks|string|An array of task objects _(See below)_
 ErrorCmd|string|A command which is executed when a task failed _(See below)_
-StatsInterface|string|The adress where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
 Logfile|string|The path to a logfile, instead of printing messages on the commandline _(Optional, remove or set to an empty string to disable using a logfile)_
+StatsInterface|string|The adress where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
+StatsPattern|string|The pattern that the http-server responds on (like `/RaNdOmStRiNg`) _(Optional, default is `/`)_
+StatsTLSCertFile|string|Path to certificate, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
+StatsTLSKeyFile|string|Path to private key, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
 
 ##### Task Objects
 

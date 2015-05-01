@@ -10,6 +10,6 @@
         }
     ],
     "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com",
-    "StatsInterface": "127.0.0.1:8080",
-    "Logfile": "./goophry.log"
+    "Logfile": "./goophry.log",
+    "StatsInterface": "127.0.0.1:8080"
 }

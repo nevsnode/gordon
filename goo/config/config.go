@@ -8,13 +8,16 @@ import (
 
 // A Config stores values, necessary for the execution of Goophry.
 type Config struct {
-	RedisNetwork   string // network type used for the connection to Redis
-	RedisAddress   string // network address used for the connection to Redis
-	RedisQueueKey  string // first part of the list-names used in Redis
-	Tasks          []Task // list of available tasks that Goophry can execute
-	ErrorCmd       string // command that will be executed when a taks created an error
-	StatsInterface string // the interface where statistics from Goophry can be gathered from
-	Logfile        string // a file where all output will be written to, instead of stdout
+	RedisNetwork     string // network type used for the connection to Redis
+	RedisAddress     string // network address used for the connection to Redis
+	RedisQueueKey    string // first part of the list-names used in Redis
+	Tasks            []Task // list of available tasks that Goophry can execute
+	ErrorCmd         string // command that will be executed when a taks created an error
+	Logfile          string // a file where all output will be written to, instead of stdout
+	StatsInterface   string // the interface where statistics from Goophry can be gathered from
+	StatsPattern     string // the pattern where the http-server will respond on
+	StatsTLSCertFile string // the certificate file used, to serve the statistics over https
+	StatsTLSKeyFile  string // the private key file used, to serve the statistics over https
 }
 
 // A Task stores information that task-workers need to execute their script/application.

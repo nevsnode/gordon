@@ -43,7 +43,7 @@ func TestStats(t *testing.T) {
 func TestStatsHttp(t *testing.T) {
 	s := NewStats()
 	iface := "127.0.0.1:3333"
-	go s.ServeHttp(iface)
+	go s.ServeHttp(iface, "/")
 
 	s.InitTask(testTaskType)
 	s.IncrTaskCount(testTaskType)
