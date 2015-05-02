@@ -43,14 +43,15 @@ func TestStats(t *testing.T) {
 func TestStatsHttp(t *testing.T) {
 	s := NewStats()
 	iface := "127.0.0.1:3333"
-	go s.ServeHttp(iface, "/")
+	pattern := "/testpattern"
+	go s.ServeHttp(iface, pattern)
 
 	s.InitTask(testTaskType)
 	s.IncrTaskCount(testTaskType)
 
 	sr := s.getStats()
 
-	url := "http://" + iface
+	url := "http://" + iface + pattern
 	resp, err := http.Get(url)
 	defer resp.Body.Close()
 
@@ -63,4 +64,11 @@ func TestStatsHttp(t *testing.T) {
 	assert.Nil(t, err, "err from parser.Decode() should be nil")
 
 	assert.Equal(t, sr, sr2, "getStats() should return the same as the parsed http-response")
+
+	url = "http://" + iface + "/doesnotexist"
+	resp, err = http.Get(url)
+
+	assert.Nil(t, err, "err from http.Get should be nil")
+
+	assert.Equal(t, 404, resp.StatusCode, "StatusCode from response should be 404 (Not found)")
 }
