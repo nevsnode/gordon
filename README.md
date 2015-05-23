@@ -59,6 +59,7 @@ RedisAddress|string|Setting needed to connect to Redis (as required by [radix](h
 RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 Tasks|string|An array of task objects _(See below)_
 ErrorCmd|string|A command which is executed when a task failed _(See below)_
+FailedTasksTTL|integer|The TTL in seconds for the lists storing failed tasks _(See below)_
 Logfile|string|The path to a logfile, instead of printing messages on the commandline _(Optional, remove or set to an empty string to disable using a logfile)_
 StatsInterface|string|The adress where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
 StatsPattern|string|The pattern that the http-server responds on (like `/RaNdOmStRiNg`) _(Optional, default is `/`)_
@@ -76,6 +77,9 @@ Workers|int|The number of concurrent instances that execute the configured scrip
 **ErrorCmd** is a command that will be executed when a task returned an exit status other than 0, or created output.  
 It will then execute the command and uses `Sprintf` to replace `%s` with the error/output.
 The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
+
+**FailedTasksTTL** is the time-to-live for lists that store failed tasks (in seconds).  
+When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they could be re-queued, for instance. If this field is not set or 0 this functionality is disabled.
 
 
 ## Testing
