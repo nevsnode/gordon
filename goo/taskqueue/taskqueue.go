@@ -230,7 +230,7 @@ func (tq Taskqueue) addFailedTask(ct config.Task, qt queueTask) {
 	// set expire
 	reply = tq.connGroup[ct.Type].Cmd("EXPIRE", queueKey, tq.config.FailedTasksTTL)
 	if reply.Err != nil {
-		msg := fmt.Sprintf("addFailedTask(), RPUSH: %s", err)
+		msg := fmt.Sprintf("addFailedTask(), EXPIRE: %s", err)
 		tq.output.NotifyError(msg)
 		return
 	}
