@@ -87,7 +87,7 @@ class Goophry
         } elseif (is_numeric($arg)) {
             return (string)$arg;
         } elseif (is_object($arg) || is_array($arg)) {
-            return json_encode($arg);
+            return base64_encode(json_encode($arg));
         }
         return false;
     }

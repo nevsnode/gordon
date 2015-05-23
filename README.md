@@ -106,7 +106,7 @@ Goophry will call the configured script (e.g. "foobar.php") like this:
 ```
 
 **Note:** As it is not possible to pass things like objects to the scripts via commandline,
-they may be json-encoded before, as in the example class.
+they may be json- and base64-encoded before, as in the example class.
 
 For example a call like this:
 ```php
@@ -116,7 +116,7 @@ $goophry->addTask('foobar', array('user' => 123));
 
 Will then be executed like this:
 ```
-/path/to/foobar.php "{\"user\":123}"
+/path/to/foobar.php "InsidXNlciI6MTIzfSI="
 ```
 
 
