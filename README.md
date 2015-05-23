@@ -13,7 +13,7 @@ Goophry just executes commands, which allows the usage of any kind of script or 
 
 ```sh
 # get/update necessary libraries
-go get -u github.com/fzzy/radix/redis
+go get -u github.com/fzzy/radix
 
 # build the binary
 go build goophry.go
