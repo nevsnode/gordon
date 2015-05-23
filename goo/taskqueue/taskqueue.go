@@ -12,6 +12,7 @@ import (
 	"../stats"
 	"encoding/json"
 	"fmt"
+	"github.com/fzzy/radix/extra/pool"
 	"github.com/fzzy/radix/redis"
 	"os/exec"
 	"strings"
@@ -54,19 +55,18 @@ func parseQueueTask(value string) (task queueTask, err error) {
 // It also offers routines to set the config-, output- and stats-objects,
 // which are used from the worker-routines.
 type Taskqueue struct {
-	waitGroup sync.WaitGroup           // wait group used to handle a proper application shutdown
-	config    config.Config            // config object, storing, for instance, connection data
-	output    output.Output            // output object for handling debug-/error-messages and notifying about task execution errors
-	stats     *stats.Stats             // stats object for gathering usage data
-	quit      chan int                 // channel used to gracefully shutdown all go-routines
-	connGroup map[string]*redis.Client // internal map storing redis-connections for each task-type
+	waitGroup      sync.WaitGroup // wait group used to handle a proper application shutdown
+	config         config.Config  // config object, storing, for instance, connection data
+	output         output.Output  // output object for handling debug-/error-messages and notifying about task execution errors
+	stats          *stats.Stats   // stats object for gathering usage data
+	quit           chan int       // channel used to gracefully shutdown all go-routines
+	failedConnPool *pool.Pool     // pool of connections used for inserting failed task into their lists
 }
 
 // NewTaskqueue returns a new instance of a Taskqueue
 func NewTaskqueue() Taskqueue {
 	return Taskqueue{
-		quit:      make(chan int),
-		connGroup: make(map[string]*redis.Client),
+		quit: make(chan int),
 	}
 }
 
@@ -87,6 +87,15 @@ func (tq *Taskqueue) SetStats(s *stats.Stats) {
 
 // CreateWorkers creates all worker go-routines.
 func (tq *Taskqueue) CreateWorkers(ct config.Task) {
+	var err error
+
+	if tq.config.FailedTasksTTL > 0 {
+		tq.failedConnPool, err = pool.NewPool(tq.config.RedisNetwork, tq.config.RedisAddress, len(tq.config.Tasks))
+		if err != nil {
+			tq.output.StopError(fmt.Sprintf("pool.NewPool(): %s", err))
+		}
+	}
+
 	queue := make(chan queueTask)
 
 	if ct.Workers <= 1 {
@@ -108,6 +117,7 @@ func (tq *Taskqueue) CreateWorkers(ct config.Task) {
 // are any go-routines active.
 func (tq *Taskqueue) Wait() {
 	tq.waitGroup.Wait()
+	tq.failedConnPool.Empty()
 }
 
 // Stop triggers the graceful shutdown of all worker-routines.
@@ -119,13 +129,11 @@ func (tq *Taskqueue) Stop() {
 // This routine gets entries from Redis, tries to parse them into queueTask and sends them
 // to the according instances of taskWorker.
 func (tq *Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
-	var err error
-
-	tq.connGroup[ct.Type], err = redis.Dial(tq.config.RedisNetwork, tq.config.RedisAddress)
+	rc, err := redis.Dial(tq.config.RedisNetwork, tq.config.RedisAddress)
 	if err != nil {
 		tq.output.StopError(fmt.Sprintf("redis.Dial(): %s", err))
 	}
-	defer tq.connGroup[ct.Type].Close()
+	defer rc.Close()
 
 	queueKey := tq.config.RedisQueueKey + ":" + ct.Type
 
@@ -136,13 +144,13 @@ func (tq *Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 		_, ok := <-tq.quit
 		if !ok {
 			shutdown = true
-			tq.connGroup[ct.Type].Close()
+			rc.Close()
 			tq.output.Debug(fmt.Sprintf("Shutting down workers for type %s", ct.Type))
 		}
 	}()
 
 	for {
-		values, err := tq.connGroup[ct.Type].Cmd("BLPOP", queueKey, 0).List()
+		values, err := rc.Cmd("BLPOP", queueKey, 0).List()
 		if err != nil {
 			// Errors here will likely be connection errors. Therefore we'll just
 			// notify about the error and break the loop, which will stop the queueWorker
@@ -205,8 +213,14 @@ func (tq *Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
 
 // addFailedTask adds a failed task to a specific list into redis, so it can be handled
 // afterwards. If the optional ttl-setting for these lists is not set, the feature is disabled.
-func (tq Taskqueue) addFailedTask(ct config.Task, qt queueTask) {
+func (tq *Taskqueue) addFailedTask(ct config.Task, qt queueTask) {
 	if tq.config.FailedTasksTTL == 0 {
+		return
+	}
+
+	rc, err := tq.failedConnPool.Get()
+	if err != nil {
+		tq.output.NotifyError(fmt.Sprintf("tq.failedConnPool.Get(): %s", err))
 		return
 	}
 
@@ -214,24 +228,23 @@ func (tq Taskqueue) addFailedTask(ct config.Task, qt queueTask) {
 
 	jsonString, err := qt.getJsonString()
 	if err != nil {
-		msg := fmt.Sprintf("addFailedTask(), ct.getJsonString(): %s", err)
-		tq.output.NotifyError(msg)
+		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), ct.getJsonString(): %s", err))
 		return
 	}
 
 	// add to list
-	reply := tq.connGroup[ct.Type].Cmd("RPUSH", queueKey, jsonString)
+	reply := rc.Cmd("RPUSH", queueKey, jsonString)
 	if reply.Err != nil {
-		msg := fmt.Sprintf("addFailedTask(), RPUSH: %s", err)
-		tq.output.NotifyError(msg)
+		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), RPUSH: %s", reply.Err))
 		return
 	}
 
 	// set expire
-	reply = tq.connGroup[ct.Type].Cmd("EXPIRE", queueKey, tq.config.FailedTasksTTL)
+	reply = rc.Cmd("EXPIRE", queueKey, tq.config.FailedTasksTTL)
 	if reply.Err != nil {
-		msg := fmt.Sprintf("addFailedTask(), EXPIRE: %s", err)
-		tq.output.NotifyError(msg)
+		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), EXPIRE: %s", reply.Err))
 		return
 	}
+
+	tq.failedConnPool.Put(rc)
 }
