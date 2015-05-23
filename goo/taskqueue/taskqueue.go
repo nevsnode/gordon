@@ -193,6 +193,8 @@ func (tq *Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
 		err := task.execute(ct.Script)
 
 		if err != nil {
+			tq.addFailedTask(ct, task)
+
 			msg := fmt.Sprintf("%s \"%s\"\n\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
 			tq.output.NotifyError(msg)
 		}
