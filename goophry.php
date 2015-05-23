@@ -29,13 +29,37 @@ class Goophry
             return false;
         }
 
-        $key = $this->params['redisQueueKey'] . ':' . $type;
+        $key = sprintf('%s:%s', $this->params['redisQueueKey'], $type);
         $value = json_encode((object)array(
             'Args' => $this->encodeArgs($args),
         ));
 
         $this->redis->rPush($key, $value);
         return true;
+    }
+
+    public function getFailedTask($type)
+    {
+        if (empty($type)) {
+            return false;
+        }
+
+        if (!$this->connect()) {
+            return false;
+        }
+
+        $key = sprintf('%s:%s:failed', $this->params['redisQueueKey'], $type);
+
+        $value = $this->redis->lPop($key);
+        if (empty($value)) {
+            return false;
+        }
+
+        $task = json_decode($value);
+        if (empty($task)) {
+            return false;
+        }
+        return $task;
     }
 
     protected function connect()
