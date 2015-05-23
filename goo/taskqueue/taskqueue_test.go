@@ -22,6 +22,12 @@ func TestQueueTask(t *testing.T) {
 	err = qt.execute(script)
 
 	assert.Equal(t, msg, fmt.Sprint(err), "error message should be the same")
+
+	jsonString, err := qt.getJsonString()
+	jsonStringExpected := "{\"Args\":[\"" + msg + "\"]}"
+
+	assert.Nil(t, err, "err should be nil")
+	assert.Equal(t, jsonStringExpected, jsonString, "jsonString should be same as expected")
 }
 
 func TestParseQueueTask(t *testing.T) {
