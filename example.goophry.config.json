@@ -10,6 +10,7 @@
         }
     ],
     "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com",
+    "FailedTasksTTL": 1800,
     "Logfile": "./goophry.log",
     "StatsInterface": "127.0.0.1:8080"
 }
