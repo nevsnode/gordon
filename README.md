@@ -79,38 +79,39 @@ It will then execute the command and uses `Sprintf` to replace `%s` with the err
 The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
 
 **FailedTasksTTL** is the time-to-live for lists that store failed tasks (in seconds).  
-When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they could be re-queued, for instance. If this field is not set or 0 this functionality is disabled.
+When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they could for instance be re-queued.
+If this field is not set or 0 this functionality is disabled.
 
 
-## Testing
+## Handling Tasks
 
-```sh
-# get/update necessary libraries
-go get -u github.com/stretchr/testify
+*The following examples are based on the PHP example implementation.
+But it should be possible to adapt these easily to other languages.*
 
-# run tests
-go test ./goo/*
+### Adding Tasks
+
+The tasks are expected in Redis-lists named after this scheme: `RedisQueueKey:TaskType`.  
+So if your RedisQueueKey is set to `myqueue` and a task with the type `update_something` is configured, Goophry will execute tasks added to the list `myqueue:update_something`.
+
+Entries to this list have to be JSON-encoded strings with a structure like this:
+```json
+{"Args":["123","456"]}
 ```
 
-
-## Task Arguments
-
-In the PHP example, arguments are passed to `addTask()` in the same order as they
-will be passed to the configured script.
-
-That means when calling the addTask-method like this:
-```php
-<?php
-$goophry->addTask('foobar', '123', '456');
-```
-
-Goophry will call the configured script (e.g. "foobar.php") like this:
+Assuming that the script configured for the task with type *update_something* is `/path/to/foobar.php`, Goophry will then execute the task like this:
 ```
 /path/to/foobar.php "123" "456"
 ```
 
-**Note:** As it is not possible to pass things like objects to the scripts via commandline,
-they may be json- and base64-encoded before, as in the example class.
+Arguments to the `addTask()`-method from the example class are passed in the same order, so you can create a task like in the example above just like this:
+```php
+<?php
+$goophry->addTask('update_something', '123', '456');
+```
+
+
+#### Passing objects or arrays as parameters
+As it is not possible to pass things like objects or arrays to the scripts via commandline, they may be json- and base64-encoded before.
 
 For example a call like this:
 ```php
@@ -121,6 +122,40 @@ $goophry->addTask('foobar', array('user' => 123));
 Will then be executed like this:
 ```
 /path/to/foobar.php "InsidXNlciI6MTIzfSI="
+```
+
+### Failed Tasks
+
+In some cases it is handy to store failed tasks, so that they can be handled programatically afterwards (instead of just notifying about them through the `ErrorCmd`).  
+For these situations it is possible to define the `FailedTasksTTL`. This enables the storage of failed tasks in Redis-lists,
+named after this scheme: `RedisQueueKey:TaskType:failed`  
+Taking the example from above, failed tasks would then be stored in a Redis-list with the name `myqueue:update_something:failed`.
+
+Setting a time-to-live value to enable this feature is mandatory, to prevent filling the lists endlessly, for the case that they are not explicitly handled.
+
+As this is rather specific to individual tasks there is no general solution within Goophry.
+
+However here is some small snippet on how to use the method `getFailedTask()` with the example class:
+```php
+<?php
+while (false !== ($task = $goophry->getFailedTask('update_something'))) {
+    // do something with the first argument (in our example '123') ...
+    echo $task['Args'][0];
+
+    // ... or re-queue the task
+    call_user_func_array(array($goophry, 'addTask'), $task['Args']);
+}
+```
+
+
+## Testing
+
+```sh
+# get/update necessary libraries
+go get -u github.com/stretchr/testify
+
+# run tests
+go test ./goo/*
 ```
 
 
