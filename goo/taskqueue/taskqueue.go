@@ -21,7 +21,8 @@ import (
 
 // A queueTask is the task as it is enqueued in a Redis-list.
 type queueTask struct {
-	Args []string // list of arguments passed to the defined script/application
+	Args         []string // list of arguments passed to the defined script/application
+	ErrorMessage string   // error message that might be created on executing the task
 }
 
 // execute executes the passed script/application with the arguments from the queueTask object.
@@ -201,6 +202,7 @@ func (tq *Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
 		err := task.execute(ct.Script)
 
 		if err != nil {
+			task.ErrorMessage = fmt.Sprintf("%s", err)
 			tq.addFailedTask(ct, task)
 
 			msg := fmt.Sprintf("%s \"%s\"\n\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)

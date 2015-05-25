@@ -24,7 +24,7 @@ func TestQueueTask(t *testing.T) {
 	assert.Equal(t, msg, fmt.Sprint(err), "error message should be the same")
 
 	jsonString, err := qt.getJsonString()
-	jsonStringExpected := "{\"Args\":[\"" + msg + "\"]}"
+	jsonStringExpected := `{"Args":["` + msg + `"],"ErrorMessage":""}`
 
 	assert.Nil(t, err, "err should be nil")
 	assert.Equal(t, jsonStringExpected, jsonString, "jsonString should be same as expected")
