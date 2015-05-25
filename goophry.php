@@ -72,14 +72,11 @@ class Goophry
             return false;
         }
 
-        $queueTask = json_decode($value, true);
-        if (empty($queueTask)) {
+        $task = new GoophryTask();
+        if (!$task->parseJson($value)) {
             return false;
         }
-
-        $task = new GoophryTask();
         $task->setType($type);
-        $task->setArgs($queueTask['Args']);
 
         return $task;
     }
@@ -141,48 +138,84 @@ class Goophry
 
 class GoophryTask
 {
-    protected $type;
-    protected $args;
+    protected $task;
+
+    public function __construct()
+    {
+        $this->task = array(
+            'Type'          => '',
+            'Args'          => array(),
+            'ErrorMessage'  => '',
+        );
+    }
 
     public function setType($type)
     {
-        $this->type = $type;
+        $this->task['Type'] = $type;
     }
 
     public function getType()
     {
-        if (empty($this->type)) {
+        if (empty($this->task['Type'])) {
             return false;
         }
-        return $this->type;
+        return $this->task['Type'];
     }
 
     public function setArgs($args)
     {
-        $this->args = $args;
+        $this->task['Args'] = $args;
     }
 
     public function getArgs()
     {
-        if (empty($this->args)) {
+        if (empty($this->task['Args'])) {
             return array();
         }
-        return $this->args;
+        return $this->task['Args'];
     }
 
     public function getArg($index = 0)
     {
-        if (empty($this->args) || !isset($this->args[$index])) {
+        if (empty($this->task['Args']) || !isset($this->task['Args'][$index])) {
             return false;
         }
-        return $this->args[$index];
+        return $this->task['Args'][$index];
     }
 
     public function addArg($arg)
     {
-        if (empty($this->args)) {
-            $this->args = array();
+        if (empty($this->task['Args'])) {
+            $this->task['Args'] = array();
         }
-        $this->args[] = $arg;
+        $this->task['Args'][] = $arg;
+    }
+
+    public function setErrorMessage($msg)
+    {
+        $this->task['ErrorMessage'] = $msg;
+    }
+
+    public function getErrorMessage()
+    {
+        if (empty($this->task['ErrorMessage'])) {
+            return '';
+        }
+        return $this->task['ErrorMessage'];
+    }
+
+    public function getJson()
+    {
+        return json_encode($this->task);
+    }
+
+    public function parseJson($string)
+    {
+        $task = json_decode($string, true);
+        if (empty($task)) {
+            return false;
+        }
+        $this->task = array_merge($this->task, $task);
+        return true;
     }
 }
