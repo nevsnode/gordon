@@ -80,6 +80,7 @@ func (o Output) StopError(msg string) {
 
 // NotifyError executes the notify-command with a given message.
 func (o Output) NotifyError(msg string) {
+	o.Debug(msg)
 	o.notify(msg)
 }
 
