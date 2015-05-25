@@ -4,7 +4,7 @@ Goophry
 Goophry aims to be a very simple, basic and lightweight task-queue.  
 It is built utilizing Go, Redis and in this example implementation, PHP.  
 
-Goophry just executes commands, which allows the usage of any kind of script or application, as long as it runs on the commandline.
+Goophry just executes commands, which allows the usage of any kind of script or application, as long as it runs on the command-line.
 
 
 ## Getting Started
@@ -20,7 +20,7 @@ go build goophry.go
 ```
 
 Then create a configuration file. You'll probably just want to copy the example file and name it `goophry.config.json`.
-Change the fields in the file acordingly and deploy in the same directory as the generated binary.  
+Change the fields in the file accordingly and deploy it in the same directory as the generated binary.  
 
 Take a look at the section [Configuration](#configuration) to understand the meaning of all fields.
 
@@ -42,12 +42,12 @@ goophry -v -c /path/to/config.json -l /path/to/logfile.log
 
 #### 3) Integrate
 
-The last step is to integrate Goophry, so that you can trigger the execution of tasks as defined in your configuration.
+The last step is to integrate Goophry, so that you can trigger the execution of tasks.
 To archive that it is necessary to push specific entries into Redis lists (using [RPUSH](http://redis.io/commands/rpush)).
 
 There is already an example implementation in PHP for this purpose (`goophry.php`).
 
-You may also want to have a look at the `/example` directory and the section [Task Arguments](#task-arguments) on how to use it.
+You may also want to have a look at the `/example` directory and the section [Handling Tasks](#handling-tasks) on how to use it.
 
 
 ## Configuration
@@ -60,8 +60,8 @@ RedisQueueKey|string|The first part of the list-names in Redis (Must be the same
 Tasks|string|An array of task objects _(See below)_
 ErrorCmd|string|A command which is executed when a task failed _(See below)_
 FailedTasksTTL|integer|The TTL in seconds for the lists storing failed tasks _(See below)_
-Logfile|string|The path to a logfile, instead of printing messages on the commandline _(Optional, remove or set to an empty string to disable using a logfile)_
-StatsInterface|string|The adress where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
+Logfile|string|The path to a logfile, instead of printing messages on the command-line _(Optional, remove or set to an empty string to disable using a logfile)_
+StatsInterface|string|The address where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
 StatsPattern|string|The pattern that the http-server responds on (like `/RaNdOmStRiNg`) _(Optional, default is `/`)_
 StatsTLSCertFile|string|Path to certificate, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
 StatsTLSKeyFile|string|Path to private key, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
@@ -70,7 +70,7 @@ StatsTLSKeyFile|string|Path to private key, if the statistics should be served o
 
 Field|Type|Description
 -----|----|-----------
-Type|string|This field defines the TaskType, it has to be used in `addTask()`
+Type|string|This field defines the TaskType, this value should be unique in your configuration, as it is used to figure out which `Script` to execute
 Script|string|The path to the script that will be executed (with the optionally passed arguments)
 Workers|int|The number of concurrent instances that execute the configured script. _(Optional, `1` will be used as default value)_
 
@@ -79,7 +79,7 @@ It will then execute the command and uses `Sprintf` to replace `%s` with the err
 The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
 
 **FailedTasksTTL** is the time-to-live for lists that store failed tasks (in seconds).  
-When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they could for instance be re-queued.
+When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they can be handled later on.
 If this field is not set or 0 this functionality is disabled.
 
 
@@ -98,12 +98,12 @@ Entries to this list have to be JSON-encoded strings with a structure like this:
 {"Args":["123","456"]}
 ```
 
-Assuming that the script configured for the task with type *update_something* is `/path/to/foobar.php`, Goophry will then execute the task like this:
+Assuming that the script configured for the task with type *update_something* is `/path/to/foobar.php`, Goophry will then execute the script like this:
 ```
 /path/to/foobar.php "123" "456"
 ```
 
-Arguments to the `addTask()`-method from the example class are passed in the same order, so you can create a task like in the example above just like this:
+Arguments to the `addTask()`-method from the example class are passed in the same order, so you can execute the command like in the example above just like this:
 ```php
 <?php
 $goophry->addTask('update_something', '123', '456');
@@ -111,7 +111,7 @@ $goophry->addTask('update_something', '123', '456');
 
 
 #### Passing objects or arrays as parameters
-As it is not possible to pass things like objects or arrays to the scripts via commandline, they may be json- and base64-encoded before.
+As it is not possible to pass things like objects or arrays to the scripts via command-line, they may be json- and base64-encoded before.
 
 For example a call like this:
 ```php
@@ -126,15 +126,13 @@ Will then be executed like this:
 
 ### Failed Tasks
 
-In some cases it is handy to store failed tasks, so that they can be handled programatically afterwards (instead of just notifying about them through the `ErrorCmd`).  
-For these situations it is possible to define the `FailedTasksTTL`. This enables the storage of failed tasks in Redis-lists,
-named after this scheme: `RedisQueueKey:TaskType:failed`  
+In some cases it is handy to store failed tasks, so that they can be handled programmatically afterwards (instead of just notifying about them through the `ErrorCmd`).  
+For these situations it is possible to define the `FailedTasksTTL`. This enables the storage of failed tasks in separate Redis-lists, named after this scheme: `RedisQueueKey:TaskType:failed`  
 Taking the example from above, failed tasks would then be stored in a Redis-list with the name `myqueue:update_something:failed`.
 
-Setting a time-to-live value to enable this feature is mandatory, to prevent filling the lists endlessly, for the case that they are not explicitly handled.
+Setting a time-to-live value to enable this feature is mandatory, to prevent filling the lists endlessly.
 
-As this is rather specific to individual tasks there is no general solution within Goophry.
-
+As this is rather specific to individual tasks there is no general solution within Goophry.  
 However here is some small snippet on how to use the method `getFailedTask()` with the example class:
 ```php
 <?php
