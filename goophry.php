@@ -38,6 +38,23 @@ class Goophry
         return true;
     }
 
+    public function addTaskObj($task)
+    {
+        if (!($task instanceof GoophryTask)) {
+            return false;
+        }
+
+        $type = $task->getType();
+        if (empty($type)) {
+            return false;
+        }
+
+        $args = $task->getArgs();
+        array_unshift($args, $type);
+
+        return call_user_func_array(array($this, 'addTask'), $args);
+    }
+
     public function getFailedTask($type)
     {
         if (empty($type)) {
@@ -55,10 +72,15 @@ class Goophry
             return false;
         }
 
-        $task = json_decode($value);
-        if (empty($task)) {
+        $queueTask = json_decode($value, true);
+        if (empty($queueTask)) {
             return false;
         }
+
+        $task = new GoophryTask();
+        $task->setType($type);
+        $task->setArgs($queueTask['Args']);
+
         return $task;
     }
 
@@ -114,5 +136,53 @@ class Goophry
             return base64_encode(json_encode($arg));
         }
         return false;
+    }
+}
+
+class GoophryTask
+{
+    protected $type;
+    protected $args;
+
+    public function setType($type)
+    {
+        $this->type = $type;
+    }
+
+    public function getType()
+    {
+        if (empty($this->type)) {
+            return false;
+        }
+        return $this->type;
+    }
+
+    public function setArgs($args)
+    {
+        $this->args = $args;
+    }
+
+    public function getArgs()
+    {
+        if (empty($this->args)) {
+            return array();
+        }
+        return $this->args;
+    }
+
+    public function getArg($index = 0)
+    {
+        if (empty($this->args) || !isset($this->args[$index])) {
+            return false;
+        }
+        return $this->args[$index];
+    }
+
+    public function addArg($arg)
+    {
+        if (empty($this->args)) {
+            $this->args = array();
+        }
+        $this->args[] = $arg;
     }
 }
