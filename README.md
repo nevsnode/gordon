@@ -140,10 +140,10 @@ However here is some small snippet on how to use the method `getFailedTask()` wi
 <?php
 while (false !== ($task = $goophry->getFailedTask('update_something'))) {
     // do something with the first argument (in our example '123') ...
-    echo $task['Args'][0];
+    echo $task->getArg(0);
 
     // ... or re-queue the task
-    call_user_func_array(array($goophry, 'addTask'), $task['Args']);
+    $goophry->addTaskObj($task);
 }
 ```
 
