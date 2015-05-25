@@ -17,20 +17,29 @@ import (
 	"syscall"
 )
 
+const GoophryVersion = "0.1.0"
+
 var (
-	configFile string
-	verbose    bool
-	logfile    string
+	configFile  string
+	verbose     bool
+	logfile     string
+	showVersion bool
 )
 
 func init() {
 	flag.StringVar(&configFile, "c", "", "path to config file")
 	flag.StringVar(&logfile, "l", "", "path to logfile")
 	flag.BoolVar(&verbose, "v", false, "enable verbose/debugging output")
+	flag.BoolVar(&showVersion, "V", false, "show version")
 }
 
 func main() {
 	flag.Parse()
+
+	if showVersion == true {
+		fmt.Printf("Goophry version %s\n", GoophryVersion)
+		os.Exit(0)
+	}
 
 	base, err := basepath.NewBasepath()
 	if err != nil {

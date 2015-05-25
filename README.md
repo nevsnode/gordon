@@ -31,6 +31,7 @@ The application accepts the following flags (all are optional):
 
 Flag|Type|Description
 ----|----|-----------
+V|bool|Set this flag to show the current Goophry version
 v|bool|Set this flag to enable verbose/debugging output
 c|string|Pass this flag with the path of the configuration file _(Overrides the default `goophry.config.json`)_
 l|string|Pass this flag with the path of the logfile _(Overrides the setting from the configuration file)_
