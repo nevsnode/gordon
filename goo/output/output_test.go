@@ -57,7 +57,7 @@ func TestOutputNotify(t *testing.T) {
 	resetTestOutput()
 	out.notify(msg)
 
-	assert.Equal(t, fmt.Sprintf(outputCmdError, emptyCmdError), testOutput, "notify() error print should be emptyCmdError")
+	assert.Equal(t, "", testOutput, "notify() error print should be empty")
 
 	notifyCmd := "echo %s >> /dev/null"
 	out.SetNotifyCmd(notifyCmd)

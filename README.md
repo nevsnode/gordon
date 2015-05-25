@@ -59,8 +59,8 @@ RedisNetwork|string|Setting needed to connect to Redis (as required by [radix](h
 RedisAddress|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
 RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 Tasks|string|An array of task objects _(See below)_
-ErrorCmd|string|A command which is executed when a task failed _(See below)_
-FailedTasksTTL|integer|The TTL in seconds for the lists storing failed tasks _(See below)_
+ErrorCmd|string|A command which is executed when a task failed _(Optional, remove or set to an empty string to disable it. See below)_
+FailedTasksTTL|integer|The TTL in seconds for the lists storing failed tasks _(Optional, See below)_
 Logfile|string|The path to a logfile, instead of printing messages on the command-line _(Optional, remove or set to an empty string to disable using a logfile)_
 StatsInterface|string|The address where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
 StatsPattern|string|The pattern that the http-server responds on (like `/RaNdOmStRiNg`) _(Optional, default is `/`)_

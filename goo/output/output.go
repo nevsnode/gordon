@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	emptyCmdError        = fmt.Errorf("ErrorCmd is empty/not set.")
 	outputCmdError       = "Error calling ErrorCmd:\n%s"
 	outputCmdErrorOutput = "Error calling ErrorCmd:\n%s\n\nCommand:\n%s"
 )
@@ -93,10 +92,10 @@ func (o Output) notify(msg string) {
 	cmdExec := fmt.Sprintf(o.notifyCmd, strconv.Quote(msg))
 
 	if o.notifyCmd == "" {
-		err = emptyCmdError
-	} else {
-		out, err = exec.Command("sh", "-c", cmdExec).Output()
+		return
 	}
+
+	out, err = exec.Command("sh", "-c", cmdExec).Output()
 
 	if err != nil {
 		o.logger.Println(fmt.Sprintf(outputCmdError, err))
