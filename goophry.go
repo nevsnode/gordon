@@ -75,6 +75,7 @@ func main() {
 	}
 
 	sta := stats.NewStats()
+	sta.SetVersion(GoophryVersion)
 
 	tq := taskqueue.NewTaskqueue()
 	tq.SetConfig(conf)

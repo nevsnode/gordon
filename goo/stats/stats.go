@@ -10,8 +10,9 @@ import (
 
 // Stats provides routines to gather basic statistics and serve them through a HTTP-server.
 type Stats struct {
-	runtimeStart int64
-	taskCount    map[string]int64
+	runtimeStart   int64
+	taskCount      map[string]int64
+	goophryVersion string
 }
 
 // statsResponse is the response that will be returned from the HTTP-server,
@@ -19,6 +20,7 @@ type Stats struct {
 type statsResponse struct {
 	Runtime   int64
 	TaskCount map[string]int64
+	Version   string
 }
 
 // NewStats returns a new instance of Stats.
@@ -27,6 +29,11 @@ func NewStats() Stats {
 		runtimeStart: getNowUnix(),
 		taskCount:    make(map[string]int64),
 	}
+}
+
+// SetVersion updates the version-number of the Goophry application.
+func (s *Stats) SetVersion(version string) {
+	s.goophryVersion = version
 }
 
 // InitTask initialises the task-counter for a certain task.
@@ -46,6 +53,7 @@ func (s Stats) getStats() statsResponse {
 	return statsResponse{
 		Runtime:   s.getRuntime(),
 		TaskCount: s.taskCount,
+		Version:   s.goophryVersion,
 	}
 }
 
