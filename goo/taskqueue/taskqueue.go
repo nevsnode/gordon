@@ -74,6 +74,14 @@ func NewTaskqueue() Taskqueue {
 // SetConfig sets the config object
 func (tq *Taskqueue) SetConfig(c config.Config) {
 	tq.config = c
+
+	var err error
+	if tq.config.FailedTasksTTL > 0 {
+		tq.failedConnPool, err = pool.NewPool(tq.config.RedisNetwork, tq.config.RedisAddress, len(tq.config.Tasks))
+		if err != nil {
+			tq.output.StopError(fmt.Sprintf("pool.NewPool(): %s", err))
+		}
+	}
 }
 
 // SetOutput sets the output object
@@ -88,15 +96,6 @@ func (tq *Taskqueue) SetStats(s *stats.Stats) {
 
 // CreateWorkers creates all worker go-routines.
 func (tq *Taskqueue) CreateWorkers(ct config.Task) {
-	var err error
-
-	if tq.config.FailedTasksTTL > 0 {
-		tq.failedConnPool, err = pool.NewPool(tq.config.RedisNetwork, tq.config.RedisAddress, len(tq.config.Tasks))
-		if err != nil {
-			tq.output.StopError(fmt.Sprintf("pool.NewPool(): %s", err))
-		}
-	}
-
 	queue := make(chan queueTask)
 
 	if ct.Workers <= 1 {
@@ -118,7 +117,10 @@ func (tq *Taskqueue) CreateWorkers(ct config.Task) {
 // are any go-routines active.
 func (tq *Taskqueue) Wait() {
 	tq.waitGroup.Wait()
-	tq.failedConnPool.Empty()
+
+	if tq.failedConnPool != nil {
+		tq.failedConnPool.Empty()
+	}
 }
 
 // Stop triggers the graceful shutdown of all worker-routines.
