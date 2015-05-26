@@ -17,7 +17,7 @@ import (
 	"syscall"
 )
 
-const GoophryVersion = "1.0.0-rc"
+const GoophryVersion = "1.0.0-rc.1"
 
 var (
 	configFile  string
