@@ -1,16 +1,21 @@
 Goophry
 =======
 
-Goophry aims to be a very simple, basic and lightweight task-queue.  
-It is built utilizing Go, Redis and in this example implementation, PHP.  
+Goophry aims to be a provide a simple, reliable, basic and lightweight task-queue.
 
-Goophry just executes commands, which allows the usage of any kind of script or application, as long as it runs on the command-line.
+It is built utilizing Go and Redis.
+
+Goophry provides functionality to execute tasks in the background of your main application/api/service. By using Go-routines, a concurrent execution of tasks can easily be achieved.
+As Goophry just executes commands, you can use any kind of script or application, as long as it runs on the command-line.
 
 
-## Getting Started
+Getting Started
+===
 
-#### 1) Setup
+1. Setup
+---
 
+Get the latest binary from the releases, build it yourself:
 ```sh
 # get/update necessary libraries
 go get -u github.com/fzzy/radix
@@ -24,10 +29,10 @@ Change the fields in the file accordingly and deploy it in the same directory as
 
 Take a look at the section [Configuration](#configuration) to understand the meaning of all fields.
 
-#### 2) Run
+2. Run
+---
 
-Now just fire up Goophry.
-The application accepts the following flags (all are optional):
+Now you can start the Goophry application. It accepts the following flags (all are optional):
 
 Flag|Type|Description
 ----|----|-----------
@@ -41,24 +46,108 @@ Example:
 goophry -v -c /path/to/config.json -l /path/to/logfile.log
 ```
 
-#### 3) Integrate
+3. Integrate
+---
 
-The last step is to integrate Goophry, so that you can trigger the execution of tasks.
-To archive that it is necessary to push specific entries into Redis lists (using [RPUSH](http://redis.io/commands/rpush)).
+The last step is to integrate Goophry, to initiate the execution of tasks.
 
-There is already an example implementation in PHP for this purpose (`goophry.php`).
-
-You may also want to have a look at the `/example` directory and the section [Handling Tasks](#handling-tasks) on how to use it.
+This is achieved by inserting entries into Redis-lists. Take a look at the section [Handling Tasks](#handling-tasks) for a brief explanation.
 
 
-## Configuration
+Handling Tasks
+===
+
+Running Tasks
+---
+
+Goophry essentially works by waiting for entries that are inserted into Redis-lists. This is archived by using the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
+With this approach tasks will be received and executed immediately, unless there are no free "Workers".
+
+The lists are named by this scheme:
+```
+RedisQueueKey:TaskType
+```
+
+Assuming you configured `"RedisQueueKey": "myqueue"`, and a task with the `"Type": "update_something"`, the list would be named this:
+```
+myqueue:update_something
+```
+
+By knowing the list-name, you are now able to initiate the execution of this task. You only need to push a task-entry into this Redis-list by using [RPUSH](http://redis.io/commands/rpush).
+The command would then look like this:
+```
+RPUSH myqueue:update_something '{"Args":["1234"]}'
+```
+
+This will initiate the execution of the configured `Script` for the task `update_something` with the first parameter beeing `1234`.
+
+Assuming your task is configured with `"Script": "/path/to/do_something.sh"`, Goophry will execute this:
+```
+/path/to/do_something.sh 1234
+```
+
+**Structure of a task entry**
+
+The values that are inserted to the Redis-lists have to be JSON-encoded strings, with this structure:
+```json
+{"Args":["param1","param2"]}
+```
+
+They have to be an object with the property `Args` that is an **array containing strings**.
+When no parameters are needed, just pass an empty array.
+
+Arguments that are contained in `Args`, will be passed to the `Script` in the exact same order.
+The task above would therefor be executed like this:
+```
+/path/to/do_something.sh "param1" "param2"
+```
+
+Failed Tasks
+---
+
+Tasks can fail by either returning an exit-code other than 0 or by creating output. In some cases one might want to handle these tasks, for instance re-queuing them.
+
+An `ErrorCmd`, if defined, can be executed to notify about failed tasks. But in some cases it is useful to handle them programmatically (additionally to notifying, or instead).
+
+It is therefor possible to save failed tasks to separate Redis-lists. To enable this functionality `FailedTasksTTL` must be set to a value greater than 0.
+
+**Note:** The TTL value applies to the whole list, not just single entries!
+
+These lists are named after this scheme:
+```
+RedisQueueKey:TaskType:failed
+```
+
+Our example:
+```
+myqueue:update_something:failed
+```
+
+The values in this list are the same as the normal task entries, but also include a string-property `ErrorMessage`, like this:
+```json
+{"Args":["param1","param2"],"ErrorMessage":"Some error happened!"}
+```
+
+You may then use [LINDEX](http://redis.io/commands/lindex) or [LPOP](http://redis.io/commands/lpop) to retrieve failed tasks from the Redis-lists and handle them.
+
+
+Libraries
+===
+
+* [Goophry PHP](https://github.com/nevsnode/goophry-php), Example library written in PHP
+
+As Goophry just reads and inserts to Redis, you can also just use the commonly used libraries for your programming language.
+
+
+Configuration
+===
 
 Field|Type|Description
 -----|----|-----------
-RedisNetwork|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
 RedisAddress|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
 RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
-Tasks|string|An array of task objects _(See below)_
+RedisNetwork|string|Setting needed to connect to Redis _(Optional, default is `tcp`, as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial)_)
+Tasks|array|An array of task objects _(See below)_
 ErrorCmd|string|A command which is executed when a task failed _(Optional, remove or set to an empty string to disable it. See below)_
 FailedTasksTTL|integer|The TTL in seconds for the lists storing failed tasks _(Optional, See below)_
 Logfile|string|The path to a logfile, instead of printing messages on the command-line _(Optional, remove or set to an empty string to disable using a logfile)_
@@ -80,74 +169,12 @@ It will then execute the command and uses `Sprintf` to replace `%s` with the err
 The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
 
 **FailedTasksTTL** is the time-to-live for lists that store failed tasks (in seconds).  
-When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they can be handled later on.
+When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they can be handled afterwards.
 If this field is not set or 0 this functionality is disabled.
 
 
-## Handling Tasks
-
-*The following examples are based on the PHP example implementation.
-But it should be possible to adapt these easily to other languages.*
-
-### Adding Tasks
-
-The tasks are expected in Redis-lists named after this scheme: `RedisQueueKey:TaskType`.  
-So if your RedisQueueKey is set to `myqueue` and a task with the type `update_something` is configured, Goophry will execute tasks added to the list `myqueue:update_something`.
-
-Entries to this list have to be JSON-encoded strings with a structure like this:
-```json
-{"Args":["123","456"]}
-```
-
-Assuming that the script configured for the task with type *update_something* is `/path/to/foobar.php`, Goophry will then execute the script like this:
-```
-/path/to/foobar.php "123" "456"
-```
-
-Arguments to the `addTask()`-method from the example class are passed in the same order, so you can execute the command like in the example above just like this:
-```php
-<?php
-$goophry->addTask('update_something', '123', '456');
-```
-
-
-#### Passing objects or arrays as parameters
-As it is not possible to pass things like objects or arrays to the scripts via command-line, they may be json- and base64-encoded before.
-
-For example a call like this:
-```php
-<?php
-$goophry->addTask('foobar', array('user' => 123));
-```
-
-Will then be executed like this:
-```
-/path/to/foobar.php "InsidXNlciI6MTIzfSI="
-```
-
-### Failed Tasks
-
-In some cases it is handy to store failed tasks, so that they can be handled programmatically afterwards (instead of just notifying about them through the `ErrorCmd`).  
-For these situations it is possible to define the `FailedTasksTTL`. This enables the storage of failed tasks in separate Redis-lists, named after this scheme: `RedisQueueKey:TaskType:failed`  
-Taking the example from above, failed tasks would then be stored in a Redis-list with the name `myqueue:update_something:failed`.
-
-Setting a time-to-live value to enable this feature is mandatory, to prevent filling the lists endlessly.
-
-As this is rather specific to individual tasks there is no general solution within Goophry.  
-However here is some small snippet on how to use the method `getFailedTask()` with the example class:
-```php
-<?php
-while (false !== ($task = $goophry->getFailedTask('update_something'))) {
-    // do something with the first argument (in our example '123') ...
-    echo $task->getArg(0);
-
-    // ... or re-queue the task
-    $goophry->addTaskObj($task);
-}
-```
-
-
-## Testing
+Testing
+===
 
 ```sh
 # get/update necessary libraries
@@ -158,7 +185,8 @@ go test ./goo/*
 ```
 
 
-## License
+License
+===
 The MIT License (MIT)
 
 Copyright (c) 2015 Sven Weintuch
