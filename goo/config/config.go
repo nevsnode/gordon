@@ -39,5 +39,11 @@ func NewConfig(path string) (c Config, err error) {
 
 	parser := json.NewDecoder(file)
 	err = parser.Decode(&c)
+
+	// take care of default-value
+	if c.RedisNetwork == "" {
+		c.RedisNetwork = "tcp"
+	}
+
 	return
 }
