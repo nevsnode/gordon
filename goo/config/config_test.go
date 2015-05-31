@@ -14,5 +14,5 @@ func TestConfig(t *testing.T) {
 	conf, err := NewConfig(configFile)
 	assert.Nil(t, err, "config should not return an error, when file exists and has valid json")
 
-	assert.NotEqual(t, "", conf.RedisNetwork, "RedisNetwork should have a default value")
+	assert.Contains(t, []string{"tcp", "udp"}, conf.RedisNetwork, "RedisNetwork should always have a (valid) value")
 }
