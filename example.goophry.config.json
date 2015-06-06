@@ -8,8 +8,8 @@
             "Workers": 2
         }
     ],
-    "ErrorCmd": "(echo 'Subject: Taskqueue Error'; echo %s) | sendmail mail@example.com",
-    "FailedTasksTTL": 1800,
+    "ErrorScript": "./sendErrorNotification.py",
+    "FailedTasksTTL": 172800,
     "Logfile": "./goophry.log",
     "StatsInterface": "127.0.0.1:8080"
 }
