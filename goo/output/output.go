@@ -9,12 +9,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strconv"
 )
 
 var (
-	outputCmdError       = "Error calling ErrorCmd:\n%s"
-	outputCmdErrorOutput = "Error calling ErrorCmd:\n%s\n\nCommand:\n%s"
+	outputCmdError       = "Error calling ErrorScript:\n%s"
+	outputCmdErrorOutput = "Error calling ErrorScript (created output):\n%s\n\nScript:\n%s"
 )
 
 // outputLogger is an interface implemented by objects that
@@ -26,9 +25,9 @@ type outputLogger interface {
 
 // An Output provides routines to handle messages within Goophry.
 type Output struct {
-	debug     bool
-	notifyCmd string
-	logger    outputLogger
+	debug       bool
+	errorScript string
+	logger      outputLogger
 }
 
 // NewOutput returns a new instance of Output, writing the messages to stdout per default.
@@ -45,9 +44,9 @@ func (o *Output) SetDebug(d bool) {
 	o.debug = d
 }
 
-// SetNotifyCmd sets the command used for notifying about certain messages.
-func (o *Output) SetNotifyCmd(cmd string) {
-	o.notifyCmd = cmd
+// SetErrorScript sets the command used for notifying about certain messages.
+func (o *Output) SetErrorScript(script string) {
+	o.errorScript = script
 }
 
 // SetLogfile modifies the Output object to write messages to the given logfile instead of stdout.
@@ -90,19 +89,17 @@ func (o Output) notify(msg string) {
 	var err error
 	var out []byte
 
-	cmdExec := fmt.Sprintf(o.notifyCmd, strconv.Quote(msg))
-
-	if o.notifyCmd == "" {
+	if o.errorScript == "" {
 		return
 	}
 
-	out, err = exec.Command("sh", "-c", cmdExec).Output()
+	out, err = exec.Command(o.errorScript, msg).Output()
 
 	if err != nil {
 		o.logger.Println(fmt.Sprintf(outputCmdError, err))
 	}
 
 	if len(out) != 0 && err == nil {
-		o.logger.Println(fmt.Sprintf(outputCmdErrorOutput, out, cmdExec))
+		o.logger.Println(fmt.Sprintf(outputCmdErrorOutput, out, o.errorScript))
 	}
 }

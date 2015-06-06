@@ -52,17 +52,17 @@ func TestOutputNotify(t *testing.T) {
 	out.logger = l
 	msg := "test output"
 
-	assert.Equal(t, "", out.notifyCmd, "notifyCmd should be empty")
+	assert.Equal(t, "", out.errorScript, "errorScript should be empty")
 
 	resetTestOutput()
 	out.notify(msg)
 
 	assert.Equal(t, "", testOutput, "notify() error print should be empty")
 
-	notifyCmd := "echo %s >> /dev/null"
-	out.SetNotifyCmd(notifyCmd)
+	errorScript := "/bin/true"
+	out.SetErrorScript(errorScript)
 
-	assert.Equal(t, notifyCmd, out.notifyCmd, "out.notifyCmd should be notifyCmd")
+	assert.Equal(t, errorScript, out.errorScript, "out.errorScript should be errorScript")
 
 	resetTestOutput()
 	out.notify(msg)
@@ -70,8 +70,8 @@ func TestOutputNotify(t *testing.T) {
 	assert.Equal(t, "", testOutput, "notify() should not create output on valid command")
 
 	resetTestOutput()
-	notifyCmd = "echo %s"
-	out.SetNotifyCmd(notifyCmd)
+	errorScript = "/bin/echo"
+	out.SetErrorScript(errorScript)
 	out.notify(msg)
 
 	assert.NotEqual(t, "", testOutput, "notify() should create output when command created output")

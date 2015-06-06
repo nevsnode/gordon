@@ -58,7 +58,7 @@ func main() {
 
 	out := output.NewOutput()
 	out.SetDebug(verbose)
-	out.SetNotifyCmd(conf.ErrorCmd)
+	out.SetErrorScript(conf.ErrorScript)
 
 	// When no logfile was passed as a flag but it was set in the configuration,
 	// use that one instead.

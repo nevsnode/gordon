@@ -12,7 +12,7 @@ type Config struct {
 	RedisAddress     string // network address used for the connection to Redis
 	RedisQueueKey    string // first part of the list-names used in Redis
 	Tasks            []Task // list of available tasks that Goophry can execute
-	ErrorCmd         string // command executed when a task created an error
+	ErrorScript      string // path to script/application that is executed when a task created an error
 	FailedTasksTTL   int    // ttl for the lists that store failed tasks
 	Logfile          string // a file where all output will be written to, instead of stdout
 	StatsInterface   string // the interface where statistics from Goophry can be gathered from
