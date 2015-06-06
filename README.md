@@ -107,7 +107,7 @@ Failed Tasks
 
 Tasks can fail by either returning an exit-code other than 0 or by creating output. In some cases one might want to handle these tasks, for instance re-queuing them.
 
-An `ErrorCmd`, if defined, can be executed to notify about failed tasks. But in some cases it is useful to handle them programmatically (additionally to notifying, or instead).
+An `ErrorScript`, if defined, can be executed to notify about failed tasks. But in some cases it is useful to handle them programmatically (additionally to notifying, or instead).
 
 It is therefor possible to save failed tasks to separate Redis-lists. To enable this functionality `FailedTasksTTL` must be set to a value greater than 0.
 
@@ -148,7 +148,7 @@ RedisAddress|string|Setting needed to connect to Redis (as required by [radix](h
 RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
 RedisNetwork|string|Setting needed to connect to Redis _(Optional, default is `tcp`, as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial)_)
 Tasks|array|An array of task objects _(See below)_
-ErrorCmd|string|A command which is executed when a task failed _(Optional, remove or set to an empty string to disable it. See below)_
+ErrorScript|string|The path to a script that is executed when a task failed _(Optional, remove or set to an empty string to disable it. See below)_
 FailedTasksTTL|integer|The TTL in seconds for the lists storing failed tasks _(Optional, See below)_
 Logfile|string|The path to a logfile, instead of printing messages on the command-line _(Optional, remove or set to an empty string to disable using a logfile)_
 StatsInterface|string|The address where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
@@ -164,12 +164,11 @@ Type|string|This field defines the TaskType, this value should be unique in your
 Script|string|The path to the script that will be executed (with the optionally passed arguments)
 Workers|int|The number of concurrent instances that execute the configured script. _(Optional, `1` will be used as default value)_
 
-**ErrorCmd** is a command that will be executed when a task returned an exit status other than 0, or created output.  
-It will then execute the command and uses `Sprintf` to replace `%s` with the error/output.
-The error-content will be escaped and quoted before, so there's no need to wrap `%s` in quotes.
+**ErrorScript** is a script that will be executed when a task returned an exit status other than 0, or created output.  
+The script will be called passing the error/output as the first parameter.
 
 **FailedTasksTTL** is the time-to-live for lists that store failed tasks (in seconds).  
-When a task fails the `ErrorCmd` is executed. Additionally the affected tasks can be stored in separate lists, so they can be handled afterwards.
+When a task fails the `ErrorScript` is executed. Additionally the affected tasks can be stored in separate lists, so they can be handled afterwards.
 If this field is not set or 0 this functionality is disabled.
 
 
