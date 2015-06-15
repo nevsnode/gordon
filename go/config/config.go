@@ -1,4 +1,4 @@
-// Package config provides functionality to read and parse the Goophry configuration file.
+// Package config provides functionality to read and parse the Gordon configuration file.
 package config
 
 import (
@@ -6,16 +6,16 @@ import (
 	"os"
 )
 
-// A Config stores values, necessary for the execution of Goophry.
+// A Config stores values, necessary for the execution of Gordon.
 type Config struct {
 	RedisNetwork     string // network type used for the connection to Redis
 	RedisAddress     string // network address used for the connection to Redis
 	RedisQueueKey    string // first part of the list-names used in Redis
-	Tasks            []Task // list of available tasks that Goophry can execute
+	Tasks            []Task // list of available tasks that Gordon can execute
 	ErrorScript      string // path to script/application that is executed when a task created an error
 	FailedTasksTTL   int    // ttl for the lists that store failed tasks
 	Logfile          string // a file where all output will be written to, instead of stdout
-	StatsInterface   string // the interface where statistics from Goophry can be gathered from
+	StatsInterface   string // the interface where statistics from Gordon can be gathered from
 	StatsPattern     string // the pattern where the http-server will respond on
 	StatsTLSCertFile string // the certificate file used, to serve the statistics over https
 	StatsTLSKeyFile  string // the private key file used, to serve the statistics over https

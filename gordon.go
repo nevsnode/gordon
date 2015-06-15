@@ -1,14 +1,14 @@
-// This is the Goophry main application.
+// This is the Gordon main application.
 // It parses all commandline flags, creates instances of all necessary packages
 // and triggers the creation of all worker go-routines.
 package main
 
 import (
-	"./goo/basepath"
-	"./goo/config"
-	"./goo/output"
-	"./goo/stats"
-	"./goo/taskqueue"
+	"./go/basepath"
+	"./go/config"
+	"./go/output"
+	"./go/stats"
+	"./go/taskqueue"
 	"flag"
 	"fmt"
 	"log"
@@ -17,7 +17,7 @@ import (
 	"syscall"
 )
 
-const GoophryVersion = "1.1.0"
+const GordonVersion = "1.1.0"
 
 var (
 	configFile  string
@@ -37,7 +37,7 @@ func main() {
 	flag.Parse()
 
 	if showVersion == true {
-		fmt.Printf("Goophry version %s\n", GoophryVersion)
+		fmt.Printf("Gordon version %s\n", GordonVersion)
 		os.Exit(0)
 	}
 
@@ -48,7 +48,7 @@ func main() {
 
 	// When no configuration file was passed as a flag, use the default location.
 	if configFile == "" {
-		configFile = base.GetPathWith("./goophry.config.json")
+		configFile = base.GetPathWith("./gordon.config.json")
 	}
 
 	conf, err := config.NewConfig(configFile)
@@ -75,7 +75,7 @@ func main() {
 	}
 
 	sta := stats.NewStats()
-	sta.SetVersion(GoophryVersion)
+	sta.SetVersion(GordonVersion)
 
 	tq := taskqueue.NewTaskqueue()
 	tq.SetConfig(conf)

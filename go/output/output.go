@@ -1,4 +1,4 @@
-// Package output handles the output for Goophry.
+// Package output handles the output for Gordon.
 // It provides routines to enable debug messages. Also output can be written to a
 // logfile instead of printing it to stdout. Furthermore it provides the possibility
 // to execute a command to notify an external script/application.
@@ -17,13 +17,13 @@ var (
 )
 
 // outputLogger is an interface implemented by objects that
-// handle the messages from within Goophry.
+// handle the messages from within Gordon.
 // This gives the possibility to provide our own handler for testing purposes.
 type outputLogger interface {
 	Println(...interface{})
 }
 
-// An Output provides routines to handle messages within Goophry.
+// An Output provides routines to handle messages within Gordon.
 type Output struct {
 	debug       bool
 	errorScript string
@@ -70,7 +70,7 @@ func (o Output) Debug(msg string) {
 }
 
 // StopError writes a message to the current output, executes the notify-command
-// and exits Goophry with the status 1.
+// and exits Gordon with the status 1.
 func (o Output) StopError(msg string) {
 	o.logger.Println(msg)
 	o.notify(msg)

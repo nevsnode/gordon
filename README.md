@@ -1,12 +1,12 @@
-Goophry
+Gordon
 =======
 
-Goophry aims to be a provide a simple, reliable, basic and lightweight task-queue.
+Gordon aims to be a provide a simple, reliable, basic and lightweight task-queue.
 
 It is built utilizing Go and Redis.
 
-Goophry provides functionality to execute tasks in the background of your main application/api/service. By using Go-routines, a concurrent execution of tasks can easily be achieved.
-As Goophry just executes commands, you can use any kind of script or application, as long as it runs on the command-line.
+Gordon provides functionality to execute tasks in the background of your main application/api/service. By using Go-routines, a concurrent execution of tasks can easily be achieved.
+As Gordon just executes commands, you can use any kind of script or application, as long as it runs on the command-line.
 
 
 Getting Started
@@ -21,10 +21,10 @@ Get the latest binary from the releases, build it yourself:
 go get -u github.com/fzzy/radix
 
 # build the binary
-go build goophry.go
+go build gordon.go
 ```
 
-Then create a configuration file. You'll probably just want to copy the example file and name it `goophry.config.json`.
+Then create a configuration file. You'll probably just want to copy the example file and name it `gordon.config.json`.
 Change the fields in the file accordingly and deploy it in the same directory as the generated binary.  
 
 Take a look at the section [Configuration](#configuration) to understand the meaning of all fields.
@@ -32,24 +32,24 @@ Take a look at the section [Configuration](#configuration) to understand the mea
 2. Run
 ---
 
-Now you can start the Goophry application. It accepts the following flags (all are optional):
+Now you can start the Gordon application. It accepts the following flags (all are optional):
 
 Flag|Type|Description
 ----|----|-----------
-V|bool|Set this flag to show the current Goophry version
+V|bool|Set this flag to show the current Gordon version
 v|bool|Set this flag to enable verbose/debugging output
-c|string|Pass this flag with the path of the configuration file _(Overrides the default `goophry.config.json`)_
+c|string|Pass this flag with the path of the configuration file _(Overrides the default `gordon.config.json`)_
 l|string|Pass this flag with the path of the logfile _(Overrides the setting from the configuration file)_
 
 Example:
 ```sh
-goophry -v -c /path/to/config.json -l /path/to/logfile.log
+gordon -v -c /path/to/config.json -l /path/to/logfile.log
 ```
 
 3. Integrate
 ---
 
-The last step is to integrate Goophry, to initiate the execution of tasks.
+The last step is to integrate Gordon, to initiate the execution of tasks.
 
 This is achieved by inserting entries into Redis-lists. Take a look at the section [Handling Tasks](#handling-tasks) for a brief explanation.
 
@@ -60,7 +60,7 @@ Handling Tasks
 Running Tasks
 ---
 
-Goophry essentially works by waiting for entries that are inserted into Redis-lists. This is archived by using the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
+Gordon essentially works by waiting for entries that are inserted into Redis-lists. This is archived by using the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
 With this approach tasks will be received and executed immediately, unless there are no free "Workers".
 
 The lists are named by this scheme:
@@ -81,7 +81,7 @@ RPUSH myqueue:update_something '{"Args":["1234"]}'
 
 This will initiate the execution of the configured `Script` for the task `update_something` with the first parameter beeing `1234`.
 
-Assuming your task is configured with `"Script": "/path/to/do_something.sh"`, Goophry will execute this:
+Assuming your task is configured with `"Script": "/path/to/do_something.sh"`, Gordon will execute this:
 ```
 /path/to/do_something.sh 1234
 ```
@@ -134,9 +134,9 @@ You may then use [LINDEX](http://redis.io/commands/lindex) or [LPOP](http://redi
 Libraries
 ===
 
-* [Goophry PHP](https://github.com/nevsnode/goophry-php), Example library written in PHP
+* [Gordon PHP](https://github.com/nevsnode/gordon-php), Example library written in PHP
 
-As Goophry just reads and inserts to Redis, you can also just use the commonly used libraries for your programming language.
+As Gordon just reads and inserts to Redis, you can also just use the commonly used libraries for your programming language.
 
 
 Configuration
@@ -145,7 +145,7 @@ Configuration
 Field|Type|Description
 -----|----|-----------
 RedisAddress|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
-RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `goophry.php`)
+RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `gordon.php`)
 RedisNetwork|string|Setting needed to connect to Redis _(Optional, default is `tcp`, as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial)_)
 Tasks|array|An array of task objects _(See below)_
 ErrorScript|string|The path to a script that is executed when a task failed _(Optional, remove or set to an empty string to disable it. See below)_
@@ -180,7 +180,7 @@ Testing
 go get -u github.com/stretchr/testify
 
 # run tests
-go test ./goo/*
+go test ./go/*
 ```
 
 

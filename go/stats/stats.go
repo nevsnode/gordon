@@ -1,4 +1,4 @@
-// Package stats provides functionality for basic usage statistics in Goophry.
+// Package stats provides functionality for basic usage statistics in Gordon.
 package stats
 
 import (
@@ -10,9 +10,9 @@ import (
 
 // Stats provides routines to gather basic statistics and serve them through a HTTP-server.
 type Stats struct {
-	runtimeStart   int64
-	taskCount      map[string]int64
-	goophryVersion string
+	runtimeStart  int64
+	taskCount     map[string]int64
+	gordonVersion string
 }
 
 // statsResponse is the response that will be returned from the HTTP-server,
@@ -31,9 +31,9 @@ func NewStats() Stats {
 	}
 }
 
-// SetVersion updates the version-number of the Goophry application.
+// SetVersion updates the version-number of the Gordon application.
 func (s *Stats) SetVersion(version string) {
-	s.goophryVersion = version
+	s.gordonVersion = version
 }
 
 // InitTask initialises the task-counter for a certain task.
@@ -53,7 +53,7 @@ func (s Stats) getStats() statsResponse {
 	return statsResponse{
 		Runtime:   s.getRuntime(),
 		TaskCount: s.taskCount,
-		Version:   s.goophryVersion,
+		Version:   s.gordonVersion,
 	}
 }
 

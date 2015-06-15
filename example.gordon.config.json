@@ -10,6 +10,6 @@
     ],
     "ErrorScript": "./sendErrorNotification.py",
     "FailedTasksTTL": 172800,
-    "Logfile": "./goophry.log",
+    "Logfile": "./gordon.log",
     "StatsInterface": "127.0.0.1:8080"
 }
