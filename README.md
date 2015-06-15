@@ -1,7 +1,7 @@
 Gordon
 =======
 
-Gordon aims to be a provide a simple, reliable, basic and lightweight task-queue.
+Gordon aims to be a provide a simple, reliable and lightweight task-queue.
 
 It is built utilizing Go and Redis.
 
@@ -15,7 +15,7 @@ Getting Started
 1. Setup
 ---
 
-Get the latest binary from the releases, build it yourself:
+Get the latest binary from the releases or build it yourself:
 ```sh
 # get/update necessary libraries
 go get -u github.com/fzzy/radix
