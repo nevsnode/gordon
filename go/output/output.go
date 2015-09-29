@@ -6,14 +6,17 @@ package output
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 )
 
 var (
-	outputCmdError       = "Error calling ErrorScript:\n%s"
-	outputCmdErrorOutput = "Error calling ErrorScript (created output):\n%s\n\nScript:\n%s"
+	outputTempFileError       = "Error writing temporary file: %s"
+	outputTempFileRemoveError = "Error removing temporary file: %s"
+	outputCmdError            = "Error calling ErrorScript: %s"
+	outputCmdErrorOutput      = "Error calling ErrorScript (created output): %s; Script: %s"
 )
 
 // outputLogger is an interface implemented by objects that
@@ -27,6 +30,7 @@ type outputLogger interface {
 type Output struct {
 	debug       bool
 	errorScript string
+	tempDir     string
 	logger      outputLogger
 }
 
@@ -47,6 +51,11 @@ func (o *Output) SetDebug(d bool) {
 // SetErrorScript sets the command used for notifying about certain messages.
 func (o *Output) SetErrorScript(script string) {
 	o.errorScript = script
+}
+
+// SetTempDir sets the directory used for temporary files.
+func (o *Output) SetTempDir(tempDir string) {
+	o.tempDir = tempDir
 }
 
 // SetLogfile modifies the Output object to write messages to the given logfile instead of stdout.
@@ -86,20 +95,52 @@ func (o Output) NotifyError(msg string) {
 // notify tries to execute the notify-command with the given message.
 // In case of an error it will write the error and message to the current output.
 func (o Output) notify(msg string) {
-	var err error
-	var out []byte
-
+	// Check if ErrorScript is even defined
 	if o.errorScript == "" {
 		return
 	}
 
-	out, err = exec.Command(o.errorScript, msg).Output()
+	// Write temporary file
+	tempFile, err := o.writeTempFile(msg)
+	if err != nil {
+		o.logger.Println(fmt.Sprintf(outputTempFileError, err))
 
+		// As the ErrorScript depends on the temporary file we stop here
+		return
+	}
+
+	// Execute ErrorScript
+	out, err := exec.Command(o.errorScript, tempFile).Output()
+
+	// The ErrorScript caused an error ...
 	if err != nil {
 		o.logger.Println(fmt.Sprintf(outputCmdError, err))
 	}
 
+	// ... or returned output
 	if len(out) != 0 && err == nil {
 		o.logger.Println(fmt.Sprintf(outputCmdErrorOutput, out, o.errorScript))
 	}
+
+	// Remove temporary file
+	err = os.Remove(tempFile)
+	if err != nil {
+		o.logger.Println(fmt.Sprintf(outputTempFileRemoveError, err))
+	}
+}
+
+// writeTempFile creates a temporary file in the tempDir-directory that stores the given message.
+func (o Output) writeTempFile(msg string) (filename string, err error) {
+	file, err := ioutil.TempFile(o.tempDir, "gordon")
+	if err != nil {
+		return
+	}
+
+	_, err = file.WriteString(msg)
+	if err != nil {
+		return
+	}
+
+	filename = file.Name()
+	return
 }

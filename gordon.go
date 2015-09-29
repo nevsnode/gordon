@@ -17,7 +17,7 @@ import (
 	"syscall"
 )
 
-const GordonVersion = "1.2.0"
+const GordonVersion = "1.3.0"
 
 var (
 	configFile  string
@@ -59,6 +59,7 @@ func main() {
 	out := output.NewOutput()
 	out.SetDebug(verbose)
 	out.SetErrorScript(conf.ErrorScript)
+	out.SetTempDir(base.GetPathWith(conf.TempDir))
 
 	// When no logfile was passed as a flag but it was set in the configuration,
 	// use that one instead.

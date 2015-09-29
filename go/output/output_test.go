@@ -70,7 +70,7 @@ func TestOutputNotify(t *testing.T) {
 	assert.Equal(t, "", testOutput, "notify() should not create output on valid command")
 
 	resetTestOutput()
-	errorScript = "/bin/echo"
+	errorScript = "/bin/cat"
 	out.SetErrorScript(errorScript)
 	out.notify(msg)
 

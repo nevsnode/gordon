@@ -19,6 +19,7 @@ type Config struct {
 	StatsPattern     string // the pattern where the http-server will respond on
 	StatsTLSCertFile string // the certificate file used, to serve the statistics over https
 	StatsTLSKeyFile  string // the private key file used, to serve the statistics over https
+	TempDir          string // path to a directory that is used for temporary files
 }
 
 // A Task stores information that task-workers need to execute their script/application.
