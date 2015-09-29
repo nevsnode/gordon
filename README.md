@@ -60,7 +60,7 @@ Handling Tasks
 Running Tasks
 ---
 
-Gordon essentially works by waiting for entries that are inserted into Redis-lists. This is archived by using the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
+Gordon essentially works by waiting for entries that are inserted into Redis-lists. This is achieved by using the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
 With this approach tasks will be received and executed immediately, unless there are no free "Workers".
 
 The lists are named by this scheme:
@@ -155,6 +155,7 @@ StatsInterface|string|The address where the http-server serving usage statistics
 StatsPattern|string|The pattern that the http-server responds on (like `/RaNdOmStRiNg`) _(Optional, default is `/`)_
 StatsTLSCertFile|string|Path to certificate, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
 StatsTLSKeyFile|string|Path to private key, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
+TempDir|string|Path to a directory used for temporary files _(Optional, remove or set to an empty string to use the system-default)_
 
 ##### Task Objects
 
@@ -165,7 +166,7 @@ Script|string|The path to the script that will be executed (with the optionally 
 Workers|int|The number of concurrent instances that execute the configured script. _(Optional, `1` will be used as default value)_
 
 **ErrorScript** is a script that will be executed when a task returned an exit status other than 0, or created output.  
-The script will be called passing the error/output as the first parameter.
+The script receives the full path to a temporary file as the first parameter. This temporary file contains the output of the failed task and will be removed after the execution of *ErrorScript*.
 
 **FailedTasksTTL** is the time-to-live for lists that store failed tasks (in seconds).  
 When a task fails the `ErrorScript` is executed. Additionally the affected tasks can be stored in separate lists, so they can be handled afterwards.
