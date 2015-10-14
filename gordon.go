@@ -79,8 +79,8 @@ func main() {
 	sta.SetVersion(GordonVersion)
 
 	tq := taskqueue.NewTaskqueue()
-	tq.SetConfig(conf)
 	tq.SetOutput(out)
+	tq.SetConfig(conf)
 	tq.SetStats(&sta)
 
 	for _, ct := range conf.Tasks {
