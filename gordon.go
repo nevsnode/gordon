@@ -17,7 +17,7 @@ import (
 	"syscall"
 )
 
-const GordonVersion = "1.3.2"
+const GordonVersion = "1.3.3"
 
 var (
 	configFile  string
