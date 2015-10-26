@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 // A queueTask is the task as it is enqueued in a Redis-list.
@@ -27,7 +28,13 @@ type queueTask struct {
 
 // execute executes the passed script/application with the arguments from the queueTask object.
 func (q queueTask) execute(script string) error {
-	out, err := exec.Command(script, q.Args...).Output()
+	cmd := exec.Command(script, q.Args...)
+
+	// set Setpgid to true, to execute command in different process group,
+	// so it won't receive the interrupt-signals sent to the main go-application
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	out, err := cmd.Output()
 
 	if len(out) != 0 && err == nil {
 		err = fmt.Errorf("%s", out)
