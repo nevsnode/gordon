@@ -12,8 +12,8 @@ import (
 	"../stats"
 	"encoding/json"
 	"fmt"
-	"github.com/fzzy/radix/extra/pool"
-	"github.com/fzzy/radix/redis"
+	"github.com/mediocregopher/radix.v2/pool"
+	"github.com/mediocregopher/radix.v2/redis"
 	"os/exec"
 	"strings"
 	"sync"
@@ -84,9 +84,9 @@ func (tq *Taskqueue) SetConfig(c config.Config) {
 
 	var err error
 	if tq.config.FailedTasksTTL > 0 {
-		tq.failedConnPool, err = pool.NewPool(tq.config.RedisNetwork, tq.config.RedisAddress, len(tq.config.Tasks))
+		tq.failedConnPool, err = pool.New(tq.config.RedisNetwork, tq.config.RedisAddress, len(tq.config.Tasks))
 		if err != nil {
-			tq.output.StopError(fmt.Sprintf("pool.NewPool(): %s", err))
+			tq.output.StopError(fmt.Sprintf("pool.New(): %s", err))
 		}
 	}
 }
