@@ -2,6 +2,7 @@
 package stats
 
 import (
+	"../config"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -23,8 +24,8 @@ type statsResponse struct {
 	Version   string           `json:"version"`
 }
 
-// NewStats returns a new instance of Stats.
-func NewStats() Stats {
+// New returns a new instance of Stats.
+func New() Stats {
 	return Stats{
 		runtimeStart: getNowUnix(),
 		taskCount:    make(map[string]int64),
@@ -67,14 +68,23 @@ func getNowUnix() int64 {
 	return time.Now().Unix()
 }
 
-// ServeHttp spawns an HTTP-server, that responds with a statsResponse in JSON.
-func (s Stats) ServeHttp(iface string, pattern string) error {
+// Serve handles spawning the appropriate HTTP/HTTPS-server
+func (s Stats) Serve(c config.StatsConfig) error {
+	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
+		return s.serveHttps(c.Interface, c.Pattern, c.TLSCertFile, c.TLSKeyFile)
+	} else {
+		return s.serveHttp(c.Interface, c.Pattern)
+	}
+}
+
+// serveHttp spawns an HTTP-server, that responds with a statsResponse in JSON.
+func (s Stats) serveHttp(iface string, pattern string) error {
 	http.HandleFunc(pattern, s.httpHandle)
 	return http.ListenAndServe(iface, nil)
 }
 
-// ServeHttps spawns an HTTP-server, that responds with a statsResponse in JSON, expecting HTTPS connections.
-func (s Stats) ServeHttps(iface string, pattern string, cert string, key string) error {
+// serveHttps spawns an HTTP-server, that responds with a statsResponse in JSON, expecting HTTPS connections.
+func (s Stats) serveHttps(iface string, pattern string, cert string, key string) error {
 	http.HandleFunc(pattern, s.httpHandle)
 	return http.ListenAndServeTLS(iface, cert, key, nil)
 }

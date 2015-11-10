@@ -44,7 +44,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	base, err := basepath.NewBasepath()
+	base, err := basepath.New()
 	if err != nil {
 		log.Fatal("basepath: ", err)
 	}
@@ -54,7 +54,7 @@ func main() {
 		cli.Config = base.GetPathWith(defaultConfig)
 	}
 
-	conf, err := config.NewConfig(cli.Config)
+	conf, err := config.New(cli.Config)
 
 	// When test-flag is set, respond accordingly
 	if cli.Test {
@@ -70,7 +70,7 @@ func main() {
 		log.Fatal("config: ", err)
 	}
 
-	out := output.NewOutput()
+	out := output.New()
 	out.SetDebug(cli.Verbose)
 	out.SetErrorScript(conf.ErrorScript)
 	out.SetTempDir(base.GetPathWith(conf.TempDir))
@@ -84,10 +84,10 @@ func main() {
 		}
 	}
 
-	sta := stats.NewStats()
+	sta := stats.New()
 	sta.SetVersion(GordonVersion)
 
-	tq := taskqueue.NewTaskqueue()
+	tq := taskqueue.New()
 	tq.SetOutput(out)
 	tq.SetConfig(conf)
 	tq.SetStats(&sta)
@@ -106,21 +106,8 @@ func main() {
 		}
 
 		go func() {
-			var err error
-
-			if conf.Stats.TLSCertFile != "" {
-				conf.Stats.TLSCertFile = base.GetPathWith(conf.Stats.TLSCertFile)
-				conf.Stats.TLSKeyFile = base.GetPathWith(conf.Stats.TLSKeyFile)
-
-				out.Debug("Serving stats on https://" + conf.Stats.Interface + conf.Stats.Pattern)
-				err = sta.ServeHttps(conf.Stats.Interface, conf.Stats.Pattern, conf.Stats.TLSCertFile, conf.Stats.TLSKeyFile)
-			} else {
-				out.Debug("Serving stats on http://" + conf.Stats.Interface + conf.Stats.Pattern)
-				err = sta.ServeHttp(conf.Stats.Interface, conf.Stats.Pattern)
-			}
-
-			if err != nil {
-				out.NotifyError(fmt.Sprintf("stats.ServeHttp(): %s", err))
+			if err := sta.Serve(conf.Stats); err != nil {
+				out.NotifyError(fmt.Sprintf("sta.Serve(): %s", err))
 			}
 		}()
 	}

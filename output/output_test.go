@@ -22,7 +22,7 @@ func (t testLogger) Println(input ...interface{}) {
 }
 
 func TestOutput(t *testing.T) {
-	out := NewOutput()
+	out := New()
 	l := testLogger{}
 	out.logger = l
 	msg := "test output"
@@ -47,7 +47,7 @@ func TestOutput(t *testing.T) {
 }
 
 func TestOutputNotify(t *testing.T) {
-	out := NewOutput()
+	out := New()
 	l := testLogger{}
 	out.logger = l
 	msg := "test output"
@@ -78,14 +78,14 @@ func TestOutputNotify(t *testing.T) {
 }
 
 func TestOutputLogfile(t *testing.T) {
-	base, err := basepath.NewBasepath()
+	base, err := basepath.New()
 
-	assert.Nil(t, err, "basepath.NewBasepath() err should be nil")
+	assert.Nil(t, err, "basepath.New() err should be nil")
 
 	path := base.GetPathWith("./output.test.log")
 	msg := "test output"
 
-	out := NewOutput()
+	out := New()
 	err = out.SetLogfile(path)
 
 	assert.Nil(t, err, "output.SetLogfile() err should be nil")

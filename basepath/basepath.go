@@ -12,9 +12,9 @@ type Basepath struct {
 	Path string
 }
 
-// NewBasepath returns a new Basepath instance.
+// New returns a new Basepath instance.
 // It may also return an error, when the path could not be determined.
-func NewBasepath() (b Basepath, err error) {
+func New() (b Basepath, err error) {
 	b.Path, err = getBasePath()
 	return
 }

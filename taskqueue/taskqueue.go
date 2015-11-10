@@ -71,8 +71,8 @@ type Taskqueue struct {
 	failedConnPool *pool.Pool     // pool of connections used for inserting failed task into their lists
 }
 
-// NewTaskqueue returns a new instance of a Taskqueue
-func NewTaskqueue() Taskqueue {
+// New returns a new instance of a Taskqueue
+func New() Taskqueue {
 	return Taskqueue{
 		quit: make(chan int),
 	}

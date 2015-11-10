@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"../config"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 var testTaskType = "mytask"
 
 func TestStats(t *testing.T) {
-	s := NewStats()
+	s := New()
 	now := getNowUnix()
 	tnow := time.Now().Unix()
 
@@ -41,10 +42,11 @@ func TestStats(t *testing.T) {
 }
 
 func TestStatsHttp(t *testing.T) {
-	s := NewStats()
+	s := New()
 	iface := "127.0.0.1:3333"
 	pattern := "/testpattern"
-	go s.ServeHttp(iface, pattern)
+	c := config.StatsConfig{Interface: iface, Pattern: pattern}
+	go s.Serve(c)
 
 	s.InitTask(testTaskType)
 	s.IncrTaskCount(testTaskType)
