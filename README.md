@@ -161,7 +161,7 @@ Testing
 go get -u github.com/stretchr/testify
 
 # run tests
-go test ./go/*
+go test ./...
 ```
 
 
