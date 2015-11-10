@@ -18,16 +18,15 @@ Getting Started
 Get the latest binary from the releases or build it yourself:
 ```sh
 # get/update necessary libraries
-go get -u github.com/fzzy/radix
+go get -u github.com/mediocregopher/radix.v2
+go get -u github.com/BurntSushi/toml
 
 # build the binary
-go build gordon.go
+go build
 ```
 
-Then create a configuration file. You'll probably just want to copy the example file and name it `gordon.config.json`.
+Then create a configuration file. You'll probably just want to copy the example file and name it `gordon.config.toml`.
 Change the fields in the file accordingly and deploy it in the same directory as the generated binary.  
-
-Take a look at the section [Configuration](#configuration) to understand the meaning of all fields.
 
 2. Run
 ---
@@ -36,20 +35,20 @@ Now you can start the Gordon application. It accepts the following flags (all ar
 
 Flag|Type|Description
 ----|----|-----------
-V|bool|Set this flag to show the current Gordon version
-v|bool|Set this flag to enable verbose/debugging output
-c|string|Pass this flag with the path of the configuration file _(Overrides the default `gordon.config.json`)_
-l|string|Pass this flag with the path of the logfile _(Overrides the setting from the configuration file)_
+c|string|Path to the configuration file _(Overrides the default `./gordon.config.toml`)_
+t|bool|Test configuration
+V|bool|Show version
+v|bool|Enable verbose/debugging output
 
 Example:
 ```sh
-gordon -v -c /path/to/config.json -l /path/to/logfile.log
+./gordon -c /path/to/gordon.config.toml -v
 ```
 
 3. Integrate
 ---
 
-The last step is to integrate Gordon, to initiate the execution of tasks.
+The last step is to integrate Gordon so that commands can be executed.
 
 This is achieved by inserting entries into Redis-lists. Take a look at the section [Handling Tasks](#handling-tasks) for a brief explanation.
 
@@ -57,31 +56,33 @@ This is achieved by inserting entries into Redis-lists. Take a look at the secti
 Handling Tasks
 ===
 
-Running Tasks
+Creating Tasks
 ---
 
-Gordon essentially works by waiting for entries that are inserted into Redis-lists. This is achieved by using the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
-With this approach tasks will be received and executed immediately, unless there are no free "Workers".
+Gordon essentially works by waiting for entries that are inserted into Redis-lists.
+It uses the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
+With this approach tasks are received and executed immediately, unless there are no free "workers".
 
 The lists are named by this scheme:
 ```
-RedisQueueKey:TaskType
+$queue_key:$task_type
 ```
 
-Assuming you configured `"RedisQueueKey": "myqueue"`, and a task with the `"Type": "update_something"`, the list would be named this:
+Assuming your *queue_key* is `myqueue`, and a task is configured with the *type* `update_something`, the list would be named this:
 ```
 myqueue:update_something
 ```
 
-By knowing the list-name, you are now able to initiate the execution of this task. You only need to push a task-entry into this Redis-list by using [RPUSH](http://redis.io/commands/rpush).
-The command would then look like this:
+By knowing the list-name, you are now able to trigger the execution of this task.
+You only need to push a task-entry into this Redis-list by using [RPUSH](http://redis.io/commands/rpush).
+The command in Redis would then look like this:
 ```
-RPUSH myqueue:update_something '{"Args":["1234"]}'
+RPUSH myqueue:update_something '{"args":["1234"]}'
 ```
 
 This will initiate the execution of the configured `Script` for the task `update_something` with the first parameter beeing `1234`.
 
-Assuming your task is configured with `"Script": "/path/to/do_something.sh"`, Gordon will execute this:
+Assuming your task is configured with *script* `/path/to/do_something.sh`, Gordon will execute this:
 ```
 /path/to/do_something.sh 1234
 ```
@@ -90,13 +91,18 @@ Assuming your task is configured with `"Script": "/path/to/do_something.sh"`, Go
 
 The values that are inserted to the Redis-lists have to be JSON-encoded strings, with this structure:
 ```json
-{"Args":["param1","param2"]}
+{
+    "args": [
+        "param1",
+        "param2"
+    ]
+}
 ```
 
-They have to be an object with the property `Args` that is an **array containing strings**.
+They have to be an object with the property `args` that is an **array containing strings**.
 When no parameters are needed, just pass an empty array.
 
-Arguments that are contained in `Args`, will be passed to the `Script` in the exact same order.
+Arguments that are contained in `args`, will be passed to the *script* in the exact same order.
 The task above would therefor be executed like this:
 ```
 /path/to/do_something.sh "param1" "param2"
@@ -105,30 +111,38 @@ The task above would therefor be executed like this:
 Failed Tasks
 ---
 
-Tasks can fail by either returning an exit-code other than 0 or by creating output. In some cases one might want to handle these tasks, for instance re-queuing them.
+Tasks returning an exit-code other than 0 or creating output are considered to be failed.
+In some cases one might want to handle these tasks separately, for instance re-queuing them.
 
-An `ErrorScript`, if defined, can be executed to notify about failed tasks. But in some cases it is useful to handle them programmatically (additionally to notifying, or instead).
+An `error_script`, if defined, can be executed to notify about failed tasks.
+But in some cases it is useful to handle them programmatically (in addition to notifying, or instead).
 
-It is therefor possible to save failed tasks to separate Redis-lists. To enable this functionality `FailedTasksTTL` must be set to a value greater than 0.
+It is therefor possible to enable saving of failed tasks to separate Redis-lists. To enable this functionality `failed_tasks_ttl` must be set and have a value greater than 0.
 
-**Note:** The TTL value applies to the whole list, not just single entries!
+**Note:** The time-to-live value applies to the whole list, not just single entries!
 
 These lists are named after this scheme:
 ```
-RedisQueueKey:TaskType:failed
+$queue_key:$task_type:failed
 ```
 
-Our example:
+For example:
 ```
 myqueue:update_something:failed
 ```
 
-The values in this list are the same as the normal task entries, but also include a string-property `ErrorMessage`, like this:
+The values in this list are the same as the normal task entries, but also include a string-property `error_message`, like this:
 ```json
-{"Args":["param1","param2"],"ErrorMessage":"Some error happened!"}
+{
+    "args": [
+        "param1",
+        "param2"
+    ],
+    "error_message": "Some error happened!"
+}
 ```
 
-You may then use [LINDEX](http://redis.io/commands/lindex) or [LPOP](http://redis.io/commands/lpop) to retrieve failed tasks from the Redis-lists and handle them.
+You may then use [LINDEX](http://redis.io/commands/lindex) or [LPOP](http://redis.io/commands/lpop) to retrieve failed tasks from Redis and handle them.
 
 
 Libraries
@@ -137,40 +151,6 @@ Libraries
 * [Gordon PHP](https://github.com/nevsnode/gordon-php), Example library written in PHP
 
 As Gordon just reads and inserts to Redis, you can also just use the commonly used libraries for your programming language.
-
-
-Configuration
-===
-
-Field|Type|Description
------|----|-----------
-RedisAddress|string|Setting needed to connect to Redis (as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial))
-RedisQueueKey|string|The first part of the list-names in Redis (Must be the same in `gordon.php`)
-RedisNetwork|string|Setting needed to connect to Redis _(Optional, default is `tcp`, as required by [radix](http://godoc.org/github.com/fzzy/radix/redis#Dial)_)
-Tasks|array|An array of task objects _(See below)_
-ErrorScript|string|The path to a script that is executed when a task failed _(Optional, remove or set to an empty string to disable it. See below)_
-FailedTasksTTL|integer|The TTL in seconds for the lists storing failed tasks _(Optional, See below)_
-Logfile|string|The path to a logfile, instead of printing messages on the command-line _(Optional, remove or set to an empty string to disable using a logfile)_
-StatsInterface|string|The address where the http-server serving usage statistics should listen to (like `ip:port`). _(Optional, remove or set to an empty string to disable the http-server)_
-StatsPattern|string|The pattern that the http-server responds on (like `/RaNdOmStRiNg`) _(Optional, default is `/`)_
-StatsTLSCertFile|string|Path to certificate, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
-StatsTLSKeyFile|string|Path to private key, if the statistics should be served over https _(Optional, remove or set to an empty string if not needed)_
-TempDir|string|Path to a directory used for temporary files _(Optional, remove or set to an empty string to use the system-default)_
-
-##### Task Objects
-
-Field|Type|Description
------|----|-----------
-Type|string|This field defines the TaskType, this value should be unique in your configuration, as it is used to figure out which `Script` to execute
-Script|string|The path to the script that will be executed (with the optionally passed arguments)
-Workers|int|The number of concurrent instances that execute the configured script. _(Optional, `1` will be used as default value)_
-
-**ErrorScript** is a script that will be executed when a task returned an exit status other than 0, or created output.  
-The script receives the full path to a temporary file as the first parameter. This temporary file contains the output of the failed task and will be removed after the execution of *ErrorScript*.
-
-**FailedTasksTTL** is the time-to-live for lists that store failed tasks (in seconds).  
-When a task fails the `ErrorScript` is executed. Additionally the affected tasks can be stored in separate lists, so they can be handled afterwards.
-If this field is not set or 0 this functionality is disabled.
 
 
 Testing
