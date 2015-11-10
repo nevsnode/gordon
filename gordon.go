@@ -21,12 +21,14 @@ const GordonVersion = "1.3.3"
 
 var cli struct {
 	Config  string
+	Test    bool
 	Verbose bool
 	Version bool
 }
 
 func init() {
 	flag.StringVar(&cli.Config, "c", "", "path to config file")
+	flag.BoolVar(&cli.Test, "t", false, "test configuration file")
 	flag.BoolVar(&cli.Verbose, "v", false, "enable verbose/debugging output")
 	flag.BoolVar(&cli.Version, "V", false, "show version")
 }
@@ -50,6 +52,17 @@ func main() {
 	}
 
 	conf, err := config.NewConfig(cli.Config)
+
+	// When test-flag is set, respond accordingly
+	if cli.Test {
+		if err != nil {
+			fmt.Println("Configuration is invalid: ", err)
+		} else {
+			fmt.Println("Configuration is valid")
+		}
+		os.Exit(0)
+	}
+
 	if err != nil {
 		log.Fatal("config: ", err)
 	}
