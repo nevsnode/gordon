@@ -148,7 +148,7 @@ func (tq *Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 	queueKey := tq.config.RedisQueueKey + ":" + ct.Type
 
 	// This go-routine waits for the quit-channel to close, which signals to shutdown of
-	// all worker-routines. We archive that by closing the Redis-connection and catching that error.
+	// all worker-routines. We achieve that by closing the Redis-connection and catching that error.
 	shutdown := false
 	go func() {
 		_, ok := <-tq.quit
