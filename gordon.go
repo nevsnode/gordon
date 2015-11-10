@@ -17,7 +17,7 @@ import (
 	"syscall"
 )
 
-const GordonVersion = "1.3.3"
+const GordonVersion = "1.4.0"
 
 var cli struct {
 	Config  string
