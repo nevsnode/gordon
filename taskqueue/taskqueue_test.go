@@ -24,14 +24,14 @@ func TestQueueTask(t *testing.T) {
 	assert.Equal(t, msg, fmt.Sprint(err), "error message should be the same")
 
 	jsonString, err := qt.getJsonString()
-	jsonStringExpected := `{"Args":["` + msg + `"],"ErrorMessage":""}`
+	jsonStringExpected := `{"args":["` + msg + `"],"error_message":""}`
 
 	assert.Nil(t, err, "err should be nil")
 	assert.Equal(t, jsonStringExpected, jsonString, "jsonString should be same as expected")
 }
 
 func TestParseQueueTask(t *testing.T) {
-	validJson := `{"Args":["_valid"]}`
+	validJson := `{"args":["_valid"]}`
 	invalidJson := "[]"
 
 	_, err := parseQueueTask(invalidJson)

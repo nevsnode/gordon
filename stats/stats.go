@@ -18,9 +18,9 @@ type Stats struct {
 // statsResponse is the response that will be returned from the HTTP-server,
 // containing the statistical data.
 type statsResponse struct {
-	Runtime   int64
-	TaskCount map[string]int64
-	Version   string
+	Runtime   int64            `json:"runtime"`
+	TaskCount map[string]int64 `json:"task_count"`
+	Version   string           `json:"version"`
 }
 
 // NewStats returns a new instance of Stats.

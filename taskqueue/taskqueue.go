@@ -22,8 +22,8 @@ import (
 
 // A queueTask is the task as it is enqueued in a Redis-list.
 type queueTask struct {
-	Args         []string // list of arguments passed to the defined script/application
-	ErrorMessage string   // error message that might be created on executing the task
+	Args         []string `json:"args"`          // list of arguments passed to the defined script/application
+	ErrorMessage string   `json:"error_message"` // error message that might be created on executing the task
 }
 
 // execute executes the passed script/application with the arguments from the queueTask object.
