@@ -19,24 +19,22 @@ import (
 
 const GordonVersion = "1.3.3"
 
-var (
-	configFile  string
-	verbose     bool
-	logfile     string
-	showVersion bool
-)
+var cli struct {
+	Config  string
+	Verbose bool
+	Version bool
+}
 
 func init() {
-	flag.StringVar(&configFile, "c", "", "path to config file")
-	flag.StringVar(&logfile, "l", "", "path to logfile")
-	flag.BoolVar(&verbose, "v", false, "enable verbose/debugging output")
-	flag.BoolVar(&showVersion, "V", false, "show version")
+	flag.StringVar(&cli.Config, "c", "", "path to config file")
+	flag.BoolVar(&cli.Verbose, "v", false, "enable verbose/debugging output")
+	flag.BoolVar(&cli.Version, "V", false, "show version")
 }
 
 func main() {
 	flag.Parse()
 
-	if showVersion == true {
+	if cli.Version == true {
 		fmt.Printf("Gordon version %s\n", GordonVersion)
 		os.Exit(0)
 	}
@@ -47,28 +45,23 @@ func main() {
 	}
 
 	// When no configuration file was passed as a flag, use the default location.
-	if configFile == "" {
-		configFile = base.GetPathWith("./gordon.config.json")
+	if cli.Config == "" {
+		cli.Config = base.GetPathWith("./gordon.config.json")
 	}
 
-	conf, err := config.NewConfig(configFile)
+	conf, err := config.NewConfig(cli.Config)
 	if err != nil {
 		log.Fatal("config: ", err)
 	}
 
 	out := output.NewOutput()
-	out.SetDebug(verbose)
+	out.SetDebug(cli.Verbose)
 	out.SetErrorScript(conf.ErrorScript)
 	out.SetTempDir(base.GetPathWith(conf.TempDir))
 
-	// When no logfile was passed as a flag but it was set in the configuration,
-	// use that one instead.
-	if logfile == "" && conf.Logfile != "" {
-		logfile = base.GetPathWith(conf.Logfile)
-	}
-
-	if logfile != "" {
-		err = out.SetLogfile(logfile)
+	// Set logfile for output, when configured
+	if conf.Logfile != "" {
+		err = out.SetLogfile(base.GetPathWith(conf.Logfile))
 
 		if err != nil {
 			log.Fatal("out.SetLogfile(): ", err)
