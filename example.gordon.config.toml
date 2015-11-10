@@ -1,0 +1,51 @@
+#
+# Gordon Taskqueue Config
+#
+
+# Redis server address
+redis_address = "127.0.0.1:6379"
+
+# Redis network-type (default is "tcp")
+# redis_network = "tcp"
+
+# Queue key, which is basically a prefix for all used redis-keys.
+queue_key = "taskqueue"
+
+# Path to a script that is executed when a task failed.
+# The script receives the full path to a temporary file as the first parameter,
+# which contains the output of the failed task. It will be removed by Gordon
+# after the execution of this script.
+# If commented or an empty string, this functionality is disabled.
+# error_script = "/opt/sendErrorNotification.py"
+
+# The time-to-live value (in seconds) for the lists that are storing failed tasks.
+# If commented or set to 0, this functionality is disabled.
+failed_tasks_ttl = 172800
+
+# Logfile which is used instead of stdout.
+# If commented or an empty string, no logfile will be used.
+# logfile = "/var/log/gordon.log"
+
+# Directory which is used for temporary files.
+# If commented or an empty string, the system-default will be used.
+# temp_dir = "/tmp"
+
+# Statistics related settings
+[stats]
+    # Interface where a webservice will listen on.
+    # If commented or an empty string, no webservice will be created.
+    # interface = "127.0.0.1:8080"
+
+    # Url pattern where the statistics-webservice will respond to
+    pattern = "/"
+
+    # Certificate settings for the statistics-webservice.
+    # If these are defined https will be used, otherweise http.
+    # tls_cert_file = "/etc/ssl/private/certificate.crt"
+    # tls_key_file = "/etc/ssl/private/private.key"
+
+# List of tasks; Just repeat the block below for each task and modify its values.
+[[tasks]]
+    type = "something"
+    script = "/opt/something.php"
+    workers = 2

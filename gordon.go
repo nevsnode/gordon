@@ -17,7 +17,10 @@ import (
 	"syscall"
 )
 
-const GordonVersion = "1.4.0"
+const (
+	GordonVersion = "1.4.0"
+	defaultConfig = "./gordon.config.toml"
+)
 
 var cli struct {
 	Config  string
@@ -48,7 +51,7 @@ func main() {
 
 	// When no configuration file was passed as a flag, use the default location.
 	if cli.Config == "" {
-		cli.Config = base.GetPathWith("./gordon.config.json")
+		cli.Config = base.GetPathWith(defaultConfig)
 	}
 
 	conf, err := config.NewConfig(cli.Config)
@@ -97,23 +100,23 @@ func main() {
 	}
 
 	// If the StatsInterface was set, start the HTTP-server for it.
-	if conf.StatsInterface != "" {
-		if conf.StatsPattern == "" {
-			conf.StatsPattern = "/"
+	if conf.Stats.Interface != "" {
+		if conf.Stats.Pattern == "" {
+			conf.Stats.Pattern = "/"
 		}
 
 		go func() {
 			var err error
 
-			if conf.StatsTLSCertFile != "" {
-				conf.StatsTLSCertFile = base.GetPathWith(conf.StatsTLSCertFile)
-				conf.StatsTLSKeyFile = base.GetPathWith(conf.StatsTLSKeyFile)
+			if conf.Stats.TLSCertFile != "" {
+				conf.Stats.TLSCertFile = base.GetPathWith(conf.Stats.TLSCertFile)
+				conf.Stats.TLSKeyFile = base.GetPathWith(conf.Stats.TLSKeyFile)
 
-				out.Debug("Serving stats on https://" + conf.StatsInterface + conf.StatsPattern)
-				err = sta.ServeHttps(conf.StatsInterface, conf.StatsPattern, conf.StatsTLSCertFile, conf.StatsTLSKeyFile)
+				out.Debug("Serving stats on https://" + conf.Stats.Interface + conf.Stats.Pattern)
+				err = sta.ServeHttps(conf.Stats.Interface, conf.Stats.Pattern, conf.Stats.TLSCertFile, conf.Stats.TLSKeyFile)
 			} else {
-				out.Debug("Serving stats on http://" + conf.StatsInterface + conf.StatsPattern)
-				err = sta.ServeHttp(conf.StatsInterface, conf.StatsPattern)
+				out.Debug("Serving stats on http://" + conf.Stats.Interface + conf.Stats.Pattern)
+				err = sta.ServeHttp(conf.Stats.Interface, conf.Stats.Pattern)
 			}
 
 			if err != nil {
