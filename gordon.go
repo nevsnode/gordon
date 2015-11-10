@@ -4,11 +4,11 @@
 package main
 
 import (
-	"./go/basepath"
-	"./go/config"
-	"./go/output"
-	"./go/stats"
-	"./go/taskqueue"
+	"./basepath"
+	"./config"
+	"./output"
+	"./stats"
+	"./taskqueue"
 	"flag"
 	"fmt"
 	"log"

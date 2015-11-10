@@ -10,7 +10,7 @@ func TestConfig(t *testing.T) {
 	_, err := NewConfig(configFile)
 	assert.NotNil(t, err, "config must return an error, when file does not exist")
 
-	configFile = "../../example.gordon.config.json"
+	configFile = "../example.gordon.config.json"
 	conf, err := NewConfig(configFile)
 	assert.Nil(t, err, "config should not return an error, when file exists and has valid json")
 
