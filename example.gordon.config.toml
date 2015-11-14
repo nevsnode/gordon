@@ -44,8 +44,12 @@ failed_tasks_ttl = 172800
     # tls_cert_file = "/etc/ssl/private/certificate.crt"
     # tls_key_file = "/etc/ssl/private/private.key"
 
-# List of tasks; Just repeat the block below for each task and modify its values.
-[[tasks]]
-    type = "something"
+# Task related tables
+[tasks]
+
+    # This table configures a task with the type 'something'.
+    # Just create a new table for every task you want to handle,
+    # and adjust their type & script-paths accordingly.
+    [tasks.something]
     script = "/opt/something.php"
-    workers = 2
+    # workers = 2

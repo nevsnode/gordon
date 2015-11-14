@@ -92,11 +92,12 @@ func main() {
 	tq.SetConfig(conf)
 	tq.SetStats(&sta)
 
-	for _, ct := range conf.Tasks {
-		ct.Script = base.GetPathWith(ct.Script)
-		tq.CreateWorkers(ct)
+	for taskType, taskConfig := range conf.Tasks {
+		taskConfig.Type = taskType
+		taskConfig.Script = base.GetPathWith(taskConfig.Script)
+		tq.CreateWorkers(taskConfig)
 
-		sta.InitTask(ct.Type)
+		sta.InitTask(taskType)
 	}
 
 	// If the StatsInterface was set, start the HTTP-server for it.

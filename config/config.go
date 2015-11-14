@@ -8,15 +8,15 @@ import (
 
 // A Config stores values, necessary for the execution of Gordon.
 type Config struct {
-	RedisNetwork   string      `toml:"redis_network"`    // network type used for the connection to Redis
-	RedisAddress   string      `toml:"redis_address"`    // network address used for the connection to Redis
-	RedisQueueKey  string      `toml:"queue_key"`        // first part of the list-names used in Redis
-	ErrorScript    string      `toml:"error_script"`     // path to script/application that is executed when a task created an error
-	FailedTasksTTL int         `toml:"failed_tasks_ttl"` // ttl for the lists that store failed tasks
-	TempDir        string      `toml:"temp_dir"`         // path to a directory that is used for temporary files
-	Logfile        string      // a file where all output will be written to, instead of stdout
-	Stats          StatsConfig // options for the statistics package
-	Tasks          []Task      // list of available tasks that Gordon can execute
+	RedisNetwork   string          `toml:"redis_network"`    // network type used for the connection to Redis
+	RedisAddress   string          `toml:"redis_address"`    // network address used for the connection to Redis
+	RedisQueueKey  string          `toml:"queue_key"`        // first part of the list-names used in Redis
+	ErrorScript    string          `toml:"error_script"`     // path to script/application that is executed when a task created an error
+	FailedTasksTTL int             `toml:"failed_tasks_ttl"` // ttl for the lists that store failed tasks
+	TempDir        string          `toml:"temp_dir"`         // path to a directory that is used for temporary files
+	Logfile        string          // a file where all output will be written to, instead of stdout
+	Stats          StatsConfig     // options for the statistics package
+	Tasks          map[string]Task // map of available tasks that Gordon can execute
 }
 
 type StatsConfig struct {
