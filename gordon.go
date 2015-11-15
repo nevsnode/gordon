@@ -44,14 +44,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	base, err := basepath.New()
-	if err != nil {
-		log.Fatal("basepath: ", err)
-	}
-
 	// When no configuration file was passed as a flag, use the default location.
 	if cli.Config == "" {
-		cli.Config = base.GetPathWith(defaultConfig)
+		cli.Config = basepath.With(defaultConfig)
 	}
 
 	conf, err := config.New(cli.Config)
@@ -73,11 +68,11 @@ func main() {
 	out := output.New()
 	out.SetDebug(cli.Verbose)
 	out.SetErrorScript(conf.ErrorScript)
-	out.SetTempDir(base.GetPathWith(conf.TempDir))
+	out.SetTempDir(basepath.With(conf.TempDir))
 
 	// Set logfile for output, when configured
 	if conf.Logfile != "" {
-		err = out.SetLogfile(base.GetPathWith(conf.Logfile))
+		err = out.SetLogfile(basepath.With(conf.Logfile))
 
 		if err != nil {
 			log.Fatal("out.SetLogfile(): ", err)
@@ -91,14 +86,7 @@ func main() {
 	tq.SetOutput(out)
 	tq.SetConfig(conf)
 	tq.SetStats(&sta)
-
-	for taskType, taskConfig := range conf.Tasks {
-		taskConfig.Type = taskType
-		taskConfig.Script = base.GetPathWith(taskConfig.Script)
-		tq.CreateWorkers(taskConfig)
-
-		sta.InitTask(taskType)
-	}
+	tq.Start()
 
 	// If the StatsInterface was set, start the HTTP-server for it.
 	if conf.Stats.Interface != "" {

@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	outputTempFileError       = "Error writing temporary file: %s"
-	outputTempFileRemoveError = "Error removing temporary file: %s"
-	outputCmdError            = "Error calling ErrorScript: %s"
-	outputCmdErrorOutput      = "Error calling ErrorScript (created output): %s; Script: %s"
+	outputTempFileError       = "Failed writing temporary file: %s"
+	outputTempFileRemoveError = "Failed removing temporary file: %s"
+	outputCmdError            = "Failed calling ErrorScript: %s"
+	outputCmdErrorOutput      = "Failed calling ErrorScript (created output): %s; Script: %s"
 )
 
 // outputLogger is an interface implemented by objects that

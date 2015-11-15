@@ -78,15 +78,11 @@ func TestOutputNotify(t *testing.T) {
 }
 
 func TestOutputLogfile(t *testing.T) {
-	base, err := basepath.New()
-
-	assert.Nil(t, err, "basepath.New() err should be nil")
-
-	path := base.GetPathWith("./output.test.log")
+	path := basepath.With("./output.test.log")
 	msg := "test output"
 
 	out := New()
-	err = out.SetLogfile(path)
+	err := out.SetLogfile(path)
 
 	assert.Nil(t, err, "output.SetLogfile() err should be nil")
 

@@ -2,6 +2,7 @@
 package config
 
 import (
+	"../basepath"
 	"github.com/BurntSushi/toml"
 	"io/ioutil"
 )
@@ -49,6 +50,11 @@ func New(path string) (c Config, err error) {
 	// take care of default-value
 	if c.RedisNetwork == "" {
 		c.RedisNetwork = "tcp"
+	}
+	for taskType, task := range c.Tasks {
+		task.Type = taskType
+		task.Script = basepath.With(task.Script)
+		c.Tasks[taskType] = task
 	}
 
 	return

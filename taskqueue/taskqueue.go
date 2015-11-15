@@ -4,60 +4,19 @@
 // parse them and send them to the task-workers.
 // Task-workers are the go-routines that finally execute the tasks that they receive
 // from the queue-workers.
+// In this file are the routines for the taskqueue itself.
 package taskqueue
 
 import (
 	"../config"
 	"../output"
 	"../stats"
-	"encoding/json"
 	"fmt"
 	"github.com/mediocregopher/radix.v2/pool"
 	"github.com/mediocregopher/radix.v2/redis"
-	"os/exec"
 	"strings"
 	"sync"
-	"syscall"
 )
-
-// A queueTask is the task as it is enqueued in a Redis-list.
-type queueTask struct {
-	Args         []string `json:"args"`          // list of arguments passed to the defined script/application
-	ErrorMessage string   `json:"error_message"` // error message that might be created on executing the task
-}
-
-// execute executes the passed script/application with the arguments from the queueTask object.
-func (q queueTask) execute(script string) error {
-	cmd := exec.Command(script, q.Args...)
-
-	// set Setpgid to true, to execute command in different process group,
-	// so it won't receive the interrupt-signals sent to the main go-application
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	out, err := cmd.Output()
-
-	if len(out) != 0 && err == nil {
-		err = fmt.Errorf("%s", out)
-	}
-
-	return err
-}
-
-// getJsonString returns the queueTask object as a json-encoded string
-func (q queueTask) getJsonString() (value string, err error) {
-	b, err := json.Marshal(q)
-	value = fmt.Sprintf("%s", b)
-	return
-}
-
-// parseQueueTask parses the string-value from a Redis-list entry.
-// It returns an object of queueTask and a possible error if parsing failed.
-func parseQueueTask(value string) (task queueTask, err error) {
-	reader := strings.NewReader(value)
-	parser := json.NewDecoder(reader)
-	err = parser.Decode(&task)
-	return
-}
 
 // A Taskqueue offers routines for the task-workers and queue-workers.
 // It also offers routines to set the config-, output- and stats-objects,
@@ -101,9 +60,9 @@ func (tq *Taskqueue) SetStats(s *stats.Stats) {
 	tq.stats = s
 }
 
-// CreateWorkers creates all worker go-routines.
-func (tq *Taskqueue) CreateWorkers(ct config.Task) {
-	queue := make(chan queueTask)
+// createWorkers creates all worker go-routines.
+func (tq *Taskqueue) createWorkers(ct config.Task) {
+	queue := make(chan QueueTask)
 
 	if ct.Workers <= 1 {
 		ct.Workers = 1
@@ -135,10 +94,19 @@ func (tq *Taskqueue) Stop() {
 	close(tq.quit)
 }
 
+// Start handles the creation of all workers for all configured tasks,
+// and the initialization for the stats-package.
+func (tq *Taskqueue) Start() {
+	for _, configTask := range tq.config.Tasks {
+		tq.createWorkers(configTask)
+		tq.stats.InitTask(configTask.Type)
+	}
+}
+
 // queueWorker connects to Redis and listens to the Redis-list for the according config.Task.
-// This routine gets entries from Redis, tries to parse them into queueTask and sends them
+// This routine gets entries from Redis, tries to parse them into QueueTask and sends them
 // to the according instances of taskWorker.
-func (tq *Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
+func (tq *Taskqueue) queueWorker(ct config.Task, queue chan QueueTask) {
 	rc, err := redis.Dial(tq.config.RedisNetwork, tq.config.RedisAddress)
 	if err != nil {
 		tq.output.StopError(fmt.Sprintf("redis.Dial(): %s", err))
@@ -182,13 +150,13 @@ func (tq *Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 				continue
 			}
 
-			tq.output.Debug(fmt.Sprintf("Task from redis for type %s with payload %s", ct.Type, value))
+			tq.output.Debug(fmt.Sprintf("Received task for type %s with payload %s", ct.Type, value))
 
-			task, err := parseQueueTask(value)
+			task, err := NewQueueTask(value)
 			if err != nil {
-				// Errors from parseQueueTask will just result in a notification.
+				// Errors from NewQueueTask will just result in a notification.
 				// So we'll just skip this entry/task and continue with the next one.
-				msg := fmt.Sprintf("parseQueueTask(): %s", err)
+				msg := fmt.Sprintf("NewQueueTask(): %s", err)
 				tq.output.NotifyError(msg)
 				continue
 			}
@@ -201,20 +169,20 @@ func (tq *Taskqueue) queueWorker(ct config.Task, queue chan queueTask) {
 	tq.waitGroup.Done()
 }
 
-// taskWorker waits for queueTask items and executes them. If they return an error,
+// taskWorker waits for QueueTask items and executes them. If they return an error,
 // it the output object to notify about that error.
-func (tq *Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
+func (tq *Taskqueue) taskWorker(ct config.Task, queue chan QueueTask) {
 	for task := range queue {
 		tq.output.Debug(fmt.Sprintf("Executing task type %s with payload %s", ct.Type, task.Args))
 		tq.stats.IncrTaskCount(ct.Type)
 
-		err := task.execute(ct.Script)
+		err := task.Execute(ct.Script)
 
 		if err != nil {
 			task.ErrorMessage = fmt.Sprintf("%s", err)
 			tq.addFailedTask(ct, task)
 
-			msg := fmt.Sprintf("%s \"%s\"\n\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
+			msg := fmt.Sprintf("Failed executing task:\n%s \"%s\"\n\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
 			tq.output.NotifyError(msg)
 		}
 	}
@@ -224,7 +192,7 @@ func (tq *Taskqueue) taskWorker(ct config.Task, queue chan queueTask) {
 
 // addFailedTask adds a failed task to a specific list into redis, so it can be handled
 // afterwards. If the optional ttl-setting for these lists is not set, the feature is disabled.
-func (tq *Taskqueue) addFailedTask(ct config.Task, qt queueTask) {
+func (tq *Taskqueue) addFailedTask(ct config.Task, qt QueueTask) {
 	if tq.config.FailedTasksTTL == 0 {
 		return
 	}
@@ -237,9 +205,9 @@ func (tq *Taskqueue) addFailedTask(ct config.Task, qt queueTask) {
 
 	queueKey := tq.config.RedisQueueKey + ":" + ct.Type + ":failed"
 
-	jsonString, err := qt.getJsonString()
+	jsonString, err := qt.GetJsonString()
 	if err != nil {
-		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), ct.getJsonString(): %s", err))
+		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), ct.GetJsonString(): %s", err))
 		return
 	}
 
