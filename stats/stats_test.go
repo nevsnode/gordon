@@ -47,6 +47,7 @@ func TestStatsHttp(t *testing.T) {
 	pattern := "/testpattern"
 	c := config.StatsConfig{Interface: iface, Pattern: pattern}
 	go s.Serve(c)
+	time.Sleep(1 * time.Second)
 
 	s.InitTask(testTaskType)
 	s.IncrTaskCount(testTaskType)

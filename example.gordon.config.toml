@@ -30,6 +30,12 @@ failed_tasks_ttl = 172800
 # If commented or an empty string, the system-default will be used.
 # temp_dir = "/tmp"
 
+# Error backoff settings
+# backoff_enabled = True
+# backoff_min = 250
+# backoff_max = 5000
+# backoff_factor = 2
+
 # Statistics related settings
 [stats]
     # Interface where a webservice will listen on.

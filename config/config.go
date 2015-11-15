@@ -15,6 +15,10 @@ type Config struct {
 	ErrorScript    string          `toml:"error_script"`     // path to script/application that is executed when a task created an error
 	FailedTasksTTL int             `toml:"failed_tasks_ttl"` // ttl for the lists that store failed tasks
 	TempDir        string          `toml:"temp_dir"`         // path to a directory that is used for temporary files
+	BackoffEnabled bool            `toml:"backoff_enabled"`  // general flag to disable/enable error-backoff
+	BackoffMin     int             `toml:"backoff_min"`      // general error-backoff start value in milliseconds
+	BackoffMax     int             `toml:"backoff_max"`      // general error-backoff maximum value in milliseconds
+	BackoffFactor  float64         `toml:"backoff_factor"`   // general error-backoff multiplicator
 	Logfile        string          // a file where all output will be written to, instead of stdout
 	Stats          StatsConfig     // options for the statistics package
 	Tasks          map[string]Task // map of available tasks that Gordon can execute
@@ -29,9 +33,13 @@ type StatsConfig struct {
 
 // A Task stores information that task-workers need to execute their script/application.
 type Task struct {
-	Type    string // second part of the list-names used in Redis and used to identify tasks
-	Script  string // path to the script/application that this task should execute
-	Workers int    // number of concurrent go-routines, available for this task
+	Type           string  // second part of the list-names used in Redis and used to identify tasks
+	Script         string  // path to the script/application that this task should execute
+	Workers        int     // number of concurrent go-routines available for this task
+	BackoffEnabled bool    `toml:"backoff_enabled"` // task-specific flag to disable/enable error-backoff
+	BackoffMin     int     `toml:"backoff_min"`     // task specific error-backoff start value in milliseconds
+	BackoffMax     int     `toml:"backoff_max"`     // task specific error-backoff maximum value in milliseconds
+	BackoffFactor  float64 `toml:"backoff_factor"`  // task specific error-backoff multiplicator
 }
 
 // New reads the provided file and returns a Config instance with the values from it.
@@ -51,9 +59,34 @@ func New(path string) (c Config, err error) {
 	if c.RedisNetwork == "" {
 		c.RedisNetwork = "tcp"
 	}
+
 	for taskType, task := range c.Tasks {
 		task.Type = taskType
 		task.Script = basepath.With(task.Script)
+
+		// if general error-backoff values are set, but not the task-specific
+		// ones, then we'll 'override' them here.
+		if task.BackoffMin == 0 {
+			task.BackoffMin = c.BackoffMin
+		}
+		if task.BackoffMax == 0 {
+			task.BackoffMax = c.BackoffMax
+		}
+		if task.BackoffFactor == 0 {
+			task.BackoffFactor = c.BackoffFactor
+		}
+
+		// ensure reasonable values for error-backoff
+		if task.BackoffMin < 100 {
+			task.BackoffMin = 100
+		}
+		if task.BackoffMax < task.BackoffMin {
+			task.BackoffMax = 2 * task.BackoffMin
+		}
+		if task.BackoffFactor < 2 {
+			task.BackoffFactor = 2
+		}
+
 		c.Tasks[taskType] = task
 	}
 

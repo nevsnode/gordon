@@ -12,22 +12,25 @@ import (
 	"../output"
 	"../stats"
 	"fmt"
+	"github.com/jpillora/backoff"
 	"github.com/mediocregopher/radix.v2/pool"
 	"github.com/mediocregopher/radix.v2/redis"
 	"strings"
 	"sync"
+	"time"
 )
 
 // A Taskqueue offers routines for the task-workers and queue-workers.
 // It also offers routines to set the config-, output- and stats-objects,
 // which are used from the worker-routines.
 type Taskqueue struct {
-	waitGroup      sync.WaitGroup // wait group used to handle a proper application shutdown
-	config         config.Config  // config object, storing, for instance, connection data
-	output         output.Output  // output object for handling debug-/error-messages and notifying about task execution errors
-	stats          *stats.Stats   // stats object for gathering usage data
-	quit           chan int       // channel used to gracefully shutdown all go-routines
-	failedConnPool *pool.Pool     // pool of connections used for inserting failed task into their lists
+	waitGroup      sync.WaitGroup              // wait group used to handle a proper application shutdown
+	config         config.Config               // config object, storing, for instance, connection data
+	output         output.Output               // output object for handling debug-/error-messages and notifying about task execution errors
+	stats          *stats.Stats                // stats object for gathering usage data
+	quit           chan int                    // channel used to gracefully shutdown all go-routines
+	failedConnPool *pool.Pool                  // pool of connections used for inserting failed task into their lists
+	errorBackoff   map[string]*backoff.Backoff // map of backoff instances, each for every task-type
 }
 
 // New returns a new instance of a Taskqueue
@@ -98,8 +101,18 @@ func (tq *Taskqueue) Stop() {
 // and the initialization for the stats-package.
 func (tq *Taskqueue) Start() {
 	for _, configTask := range tq.config.Tasks {
-		tq.createWorkers(configTask)
+		if configTask.BackoffEnabled {
+			tq.errorBackoff[configTask.Type] = &backoff.Backoff{
+				Min:    time.Duration(configTask.BackoffMin) * time.Millisecond,
+				Max:    time.Duration(configTask.BackoffMax) * time.Millisecond,
+				Factor: configTask.BackoffFactor,
+				Jitter: true,
+			}
+		}
+
 		tq.stats.InitTask(configTask.Type)
+
+		tq.createWorkers(configTask)
 	}
 }
 
@@ -184,6 +197,14 @@ func (tq *Taskqueue) taskWorker(ct config.Task, queue chan QueueTask) {
 
 			msg := fmt.Sprintf("Failed executing task:\n%s \"%s\"\n\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
 			tq.output.NotifyError(msg)
+		}
+
+		if tq.errorBackoff[ct.Type] != nil {
+			if err == nil {
+				tq.errorBackoff[ct.Type].Reset()
+			} else {
+				time.Sleep(tq.errorBackoff[ct.Type].Duration())
+			}
 		}
 	}
 

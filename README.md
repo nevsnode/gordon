@@ -20,6 +20,7 @@ Get the latest binary from the releases or build it yourself:
 # get/update necessary libraries
 go get -u github.com/mediocregopher/radix.v2
 go get -u github.com/BurntSushi/toml
+go get -u github.com/jpillora/backoff
 
 # build the binary
 go build
