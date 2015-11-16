@@ -37,10 +37,11 @@ type Task struct {
 	Type           string  // second part of the list-names used in Redis and used to identify tasks
 	Script         string  // path to the script/application that this task should execute
 	Workers        int     // number of concurrent go-routines available for this task
-	BackoffEnabled bool    `toml:"backoff_enabled"` // task-specific flag to disable/enable error-backoff
-	BackoffMin     int     `toml:"backoff_min"`     // task specific error-backoff start value in milliseconds
-	BackoffMax     int     `toml:"backoff_max"`     // task specific error-backoff maximum value in milliseconds
-	BackoffFactor  float64 `toml:"backoff_factor"`  // task specific error-backoff multiplicator
+	FailedTasksTTL int     `toml:"failed_tasks_ttl"` // ttl for the lists that store failed tasks
+	BackoffEnabled bool    `toml:"backoff_enabled"`  // task-specific flag to disable/enable error-backoff
+	BackoffMin     int     `toml:"backoff_min"`      // task specific error-backoff start value in milliseconds
+	BackoffMax     int     `toml:"backoff_max"`      // task specific error-backoff maximum value in milliseconds
+	BackoffFactor  float64 `toml:"backoff_factor"`   // task specific error-backoff multiplicator
 }
 
 // New reads the provided file and returns a Config instance with the values from it.
@@ -64,6 +65,11 @@ func New(path string) (c Config, err error) {
 	for taskType, task := range c.Tasks {
 		task.Type = taskType
 		task.Script = basepath.With(task.Script)
+
+		// override the failed-task-ttl if not set on this level
+		if task.FailedTasksTTL == 0 && c.FailedTasksTTL > 0 {
+			task.FailedTasksTTL = c.FailedTasksTTL
+		}
 
 		// if general error-backoff values are set, but not the task-specific
 		// ones, then we'll 'override' them here.

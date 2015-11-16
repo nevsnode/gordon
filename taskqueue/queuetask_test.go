@@ -1,8 +1,8 @@
 package taskqueue
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func TestQueueTask(t *testing.T) {

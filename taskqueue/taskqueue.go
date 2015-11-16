@@ -45,10 +45,16 @@ func (tq *Taskqueue) SetConfig(c config.Config) {
 	tq.config = c
 
 	var err error
-	if tq.config.FailedTasksTTL > 0 {
-		tq.failedConnPool, err = pool.New(tq.config.RedisNetwork, tq.config.RedisAddress, len(tq.config.Tasks))
-		if err != nil {
-			tq.output.StopError(fmt.Sprintf("pool.New(): %s", err))
+
+	// create a connection-pool for the addFailedTask-routine, as soon
+	// as there is at least one task using this functionality
+	for _, configTask := range c.Tasks {
+		if configTask.FailedTasksTTL > 0 {
+			tq.failedConnPool, err = pool.New(c.RedisNetwork, c.RedisAddress, len(c.Tasks))
+			if err != nil {
+				tq.output.StopError(fmt.Sprintf("pool.New(): %s", err))
+			}
+			break
 		}
 	}
 }
@@ -214,7 +220,7 @@ func (tq *Taskqueue) taskWorker(ct config.Task, queue chan QueueTask) {
 // addFailedTask adds a failed task to a specific list into redis, so it can be handled
 // afterwards. If the optional ttl-setting for these lists is not set, the feature is disabled.
 func (tq *Taskqueue) addFailedTask(ct config.Task, qt QueueTask) {
-	if tq.config.FailedTasksTTL == 0 {
+	if ct.FailedTasksTTL == 0 {
 		return
 	}
 
@@ -240,7 +246,7 @@ func (tq *Taskqueue) addFailedTask(ct config.Task, qt QueueTask) {
 	}
 
 	// set expire
-	reply = rc.Cmd("EXPIRE", queueKey, tq.config.FailedTasksTTL)
+	reply = rc.Cmd("EXPIRE", queueKey, ct.FailedTasksTTL)
 	if reply.Err != nil {
 		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), EXPIRE: %s", reply.Err))
 		return
