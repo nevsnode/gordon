@@ -3,8 +3,8 @@ package stats
 import (
 	"../config"
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -15,30 +15,45 @@ func TestStats(t *testing.T) {
 	s := New()
 	now := getNowUnix()
 	tnow := time.Now().Unix()
-
-	assert.Equal(t, tnow, now, "getNowUnix() should return the same timestamp")
-
-	assert.Equal(t, tnow, s.runtimeStart, "runtimeStart should have the same timestamp")
+	if tnow != now {
+		t.Log("getNowUnix() should return the current unix timestamp")
+		t.FailNow()
+	}
+	if tnow != s.runtimeStart {
+		t.Log("stats.runtimeStart should have the current unix timestamp")
+		t.FailNow()
+	}
 
 	sr := s.getStats()
-
-	assert.Len(t, sr.TaskCount, 0, "TaskCount length should be 0")
+	if len(sr.TaskCount) != 0 {
+		t.Log("The initial stats.TaskCount length should be 0")
+		t.Fail()
+	}
 
 	s.InitTask(testTaskType)
 	sr = s.getStats()
-
-	assert.Len(t, sr.TaskCount, 1, "TaskCount length after first init should be 1")
-	assert.EqualValues(t, 0, sr.TaskCount[testTaskType], "initialized taskcount should be 0")
+	if len(sr.TaskCount) != 1 {
+		t.Log("After initializing one task stats.TaskCount length should be 1")
+		t.Fail()
+	}
+	if sr.TaskCount[testTaskType] != 0 {
+		t.Log("The task-count for the initialized task should be 0")
+		t.Fail()
+	}
 
 	s.IncrTaskCount(testTaskType)
 	sr = s.getStats()
-
-	assert.EqualValues(t, 1, sr.TaskCount[testTaskType], "incremented taskcount should be 1")
+	if sr.TaskCount[testTaskType] != 1 {
+		t.Log("The task-count after incrementing should be 1")
+		t.Fail()
+	}
 
 	time.Sleep(1 * time.Second)
 	sr = s.getStats()
-
-	assert.True(t, sr.Runtime >= 1, "Runtime should be greater than one second")
+	if sr.Runtime < 1 {
+		t.Log("statsResponse.Runtime should be greater than 1, after waiting 1 second")
+		t.Fail()
+	}
 }
 
 func TestStatsHttp(t *testing.T) {
@@ -57,21 +72,34 @@ func TestStatsHttp(t *testing.T) {
 	url := "http://" + iface + pattern
 	resp, err := http.Get(url)
 	defer resp.Body.Close()
-
-	assert.Nil(t, err, "err from http.Get should be nil")
+	if err != nil {
+		t.Log("http.Get should not return an error")
+		t.Log("err: ", err)
+		t.FailNow()
+	}
 
 	sr2 := statsResponse{}
 	parser := json.NewDecoder(resp.Body)
 	err = parser.Decode(&sr2)
-
-	assert.Nil(t, err, "err from parser.Decode() should be nil")
-
-	assert.Equal(t, sr, sr2, "getStats() should return the same as the parsed http-response")
+	if err != nil {
+		t.Log("json.Decode() should not return an error")
+		t.Log("err: ", err)
+		t.FailNow()
+	}
+	if !reflect.DeepEqual(sr, sr2) {
+		t.Log("stats.getStats() should return the same value as the parsed http-response")
+		t.Fail()
+	}
 
 	url = "http://" + iface + "/doesnotexist"
 	resp, err = http.Get(url)
-
-	assert.Nil(t, err, "err from http.Get should be nil")
-
-	assert.Equal(t, 404, resp.StatusCode, "StatusCode from response should be 404 (Not found)")
+	if err != nil {
+		t.Log("http.Get should not return an error")
+		t.Log("err: ", err)
+		t.FailNow()
+	}
+	if resp.StatusCode != 404 {
+		t.Log("The HTTP status-code for an invalid path should be 404")
+		t.Fail()
+	}
 }

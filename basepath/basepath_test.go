@@ -1,21 +1,26 @@
 package basepath
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestBasepath(t *testing.T) {
-	base, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	require.Nil(t, err, "error should be nil")
+	if base == "" {
+		t.Log("base should not be empty")
+		t.FailNow()
+	}
 
 	file := "./testfile"
 	withBase := filepath.Clean(base + "/" + file)
-	assert.Equal(t, withBase, With(file), "GetPathWith() should return an absolute path to the relative file")
+	if withBase != With(file) {
+		t.Log("With() should return an absolute path to a relative file")
+		t.Fail()
+	}
 
 	file = "/tmp/file"
-	assert.Equal(t, file, With(file), "GetPathWith() should return the full file if its an absolute path")
+	if file != With(file) {
+		t.Log("With() should return the full file if it is an absolute path")
+		t.Fail()
+	}
 }

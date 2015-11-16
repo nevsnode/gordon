@@ -158,13 +158,8 @@ Testing
 ===
 
 ```sh
-# get/update necessary libraries
-go get -u github.com/stretchr/testify
-
-# run tests
 go test ./...
 ```
-
 
 License
 ===

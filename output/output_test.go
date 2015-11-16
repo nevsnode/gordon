@@ -3,9 +3,9 @@ package output
 import (
 	"../basepath"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -28,22 +28,32 @@ func TestOutput(t *testing.T) {
 	msg := "test output"
 
 	out.SetDebug(true)
-	assert.True(t, out.debug, "debug should be true")
+	if out.debug != true {
+		t.Log("output.debug should be true")
+		t.FailNow()
+	}
 
 	out.SetDebug(false)
-	assert.False(t, out.debug, "debug should be false")
+	if out.debug != false {
+		t.Log("output.debug should be false")
+		t.FailNow()
+	}
 
 	resetTestOutput()
 	out.SetDebug(false)
 	out.Debug(msg)
-
-	assert.Equal(t, "", testOutput, "output should be empty")
+	if testOutput != "" {
+		t.Log("No output should be produced when output.debug is false")
+		t.Fail()
+	}
 
 	resetTestOutput()
 	out.SetDebug(true)
 	out.Debug(msg)
-
-	assert.Equal(t, msg, testOutput, "output should be msg")
+	if testOutput != msg {
+		t.Log("The debug-message should be printed when output.debug is true")
+		t.Fail()
+	}
 }
 
 func TestOutputNotify(t *testing.T) {
@@ -52,29 +62,40 @@ func TestOutputNotify(t *testing.T) {
 	out.logger = l
 	msg := "test output"
 
-	assert.Equal(t, "", out.errorScript, "errorScript should be empty")
+	if out.errorScript != "" {
+		t.Log("output.errorScript should be empty by default")
+		t.Fail()
+	}
 
 	resetTestOutput()
 	out.notify(msg)
-
-	assert.Equal(t, "", testOutput, "notify() error print should be empty")
+	if testOutput != "" {
+		t.Log("output.notify() should not create any output when output.errorScript is empty")
+		t.Fail()
+	}
 
 	errorScript := "/bin/true"
 	out.SetErrorScript(errorScript)
-
-	assert.Equal(t, errorScript, out.errorScript, "out.errorScript should be errorScript")
+	if errorScript != out.errorScript {
+		t.Log("output.errorScript should be the value that was set through output.SetErrorScript")
+		t.FailNow()
+	}
 
 	resetTestOutput()
 	out.notify(msg)
-
-	assert.Equal(t, "", testOutput, "notify() should not create output on valid command")
+	if testOutput != "" {
+		t.Log("output.notify() should not create output when executing a valid/successful command")
+		t.Fail()
+	}
 
 	resetTestOutput()
 	errorScript = "/bin/cat"
 	out.SetErrorScript(errorScript)
 	out.notify(msg)
-
-	assert.NotEqual(t, "", testOutput, "notify() should create output when command created output")
+	if testOutput == "" {
+		t.Log("output.notify() should create output when executing a command that created output")
+		t.Fail()
+	}
 }
 
 func TestOutputLogfile(t *testing.T) {
@@ -83,18 +104,31 @@ func TestOutputLogfile(t *testing.T) {
 
 	out := New()
 	err := out.SetLogfile(path)
-
-	assert.Nil(t, err, "output.SetLogfile() err should be nil")
+	if err != nil {
+		t.Log("output.SetLogfile() should not return an error")
+		t.Log("err: ", err)
+		t.FailNow()
+	}
 
 	out.SetDebug(true)
 	out.Debug(msg)
 
 	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Log("ioutil.ReadFile() should not return an error")
+		t.Log("err: ", err)
+		t.FailNow()
+	}
 
-	assert.Nil(t, err, "ioutil.ReadFile() err should be nil")
-
-	assert.Contains(t, string(b), msg, "logfile should contain the debug message")
+	if !strings.Contains(string(b), msg) {
+		t.Log("logfile should contain the debug-message")
+		t.Fail()
+	}
 
 	err = os.Remove(path)
-	assert.Nil(t, err, "os.Remove() err should be nil")
+	if err != nil {
+		t.Log("os.Remove() should not return an error")
+		t.Log("err: ", err)
+		t.Fail()
+	}
 }
