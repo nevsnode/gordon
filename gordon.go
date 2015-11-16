@@ -17,10 +17,10 @@ import (
 	"syscall"
 )
 
-const (
-	GordonVersion = "1.4.0"
-	defaultConfig = "./gordon.config.toml"
-)
+// GordonVersion is the current version of Gordon
+const GordonVersion = "1.4.0"
+
+const defaultConfig = "./gordon.config.toml"
 
 var cli struct {
 	Config  string

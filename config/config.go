@@ -24,6 +24,7 @@ type Config struct {
 	Tasks          map[string]Task // map of available tasks that Gordon can execute
 }
 
+// StatsConfig contains configuration options for the stats-package/service.
 type StatsConfig struct {
 	Interface   string // the interface where statistics from Gordon can be gathered from
 	Pattern     string // the pattern where the http-server will respond on

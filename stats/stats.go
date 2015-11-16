@@ -71,20 +71,19 @@ func getNowUnix() int64 {
 // Serve handles spawning the appropriate HTTP/HTTPS-server
 func (s Stats) Serve(c config.StatsConfig) error {
 	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
-		return s.serveHttps(c.Interface, c.Pattern, c.TLSCertFile, c.TLSKeyFile)
-	} else {
-		return s.serveHttp(c.Interface, c.Pattern)
+		return s.serveHTTPS(c.Interface, c.Pattern, c.TLSCertFile, c.TLSKeyFile)
 	}
+	return s.serveHTTP(c.Interface, c.Pattern)
 }
 
-// serveHttp spawns an HTTP-server, that responds with a statsResponse in JSON.
-func (s Stats) serveHttp(iface string, pattern string) error {
+// serveHTTP spawns an HTTP-server, that responds with a statsResponse in JSON.
+func (s Stats) serveHTTP(iface string, pattern string) error {
 	http.HandleFunc(pattern, s.httpHandle)
 	return http.ListenAndServe(iface, nil)
 }
 
-// serveHttps spawns an HTTP-server, that responds with a statsResponse in JSON, expecting HTTPS connections.
-func (s Stats) serveHttps(iface string, pattern string, cert string, key string) error {
+// serveHTTPS spawns an HTTP-server, that responds with a statsResponse in JSON, expecting HTTPS connections.
+func (s Stats) serveHTTPS(iface string, pattern string, cert string, key string) error {
 	http.HandleFunc(pattern, s.httpHandle)
 	return http.ListenAndServeTLS(iface, cert, key, nil)
 }

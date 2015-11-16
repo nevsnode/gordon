@@ -21,7 +21,7 @@ type QueueTask struct {
 	ErrorMessage string   `json:"error_message"` // error message that might be created on executing the task
 }
 
-// execute executes the passed script/application with the arguments from the QueueTask object.
+// Execute executes the passed script/application with the arguments from the QueueTask object.
 func (q QueueTask) Execute(script string) error {
 	cmd := exec.Command(script, q.Args...)
 
@@ -38,8 +38,8 @@ func (q QueueTask) Execute(script string) error {
 	return err
 }
 
-// getJsonString returns the QueueTask object as a json-encoded string
-func (q QueueTask) GetJsonString() (value string, err error) {
+// GetJSONString returns the QueueTask object as a json-encoded string
+func (q QueueTask) GetJSONString() (value string, err error) {
 	b, err := json.Marshal(q)
 	value = fmt.Sprintf("%s", b)
 	return

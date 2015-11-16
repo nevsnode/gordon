@@ -226,9 +226,9 @@ func (tq *Taskqueue) addFailedTask(ct config.Task, qt QueueTask) {
 
 	queueKey := tq.config.RedisQueueKey + ":" + ct.Type + ":failed"
 
-	jsonString, err := qt.GetJsonString()
+	jsonString, err := qt.GetJSONString()
 	if err != nil {
-		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), ct.GetJsonString(): %s", err))
+		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), ct.GetJSONString(): %s", err))
 		return
 	}
 
