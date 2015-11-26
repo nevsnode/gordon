@@ -24,4 +24,16 @@ func TestConfig(t *testing.T) {
 		t.Log("RedisNetwork should always have a valid value")
 		t.Fail()
 	}
+
+	if len(conf.Tasks) > 0 {
+		if conf.BackoffEnabled {
+			for _, task := range conf.Tasks {
+				if !task.BackoffEnabled {
+					t.Log("BackoffEnabled for a task should be true, when the global value is")
+					t.Fail()
+				}
+				break
+			}
+		}
+	}
 }

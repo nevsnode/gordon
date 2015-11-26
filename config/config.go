@@ -73,6 +73,9 @@ func New(path string) (c Config, err error) {
 
 		// if general error-backoff values are set, but not the task-specific
 		// ones, then we'll 'override' them here.
+		if c.BackoffEnabled {
+			task.BackoffEnabled = true
+		}
 		if task.BackoffMin == 0 {
 			task.BackoffMin = c.BackoffMin
 		}
