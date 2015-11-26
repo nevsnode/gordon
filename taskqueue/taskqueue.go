@@ -106,6 +106,8 @@ func (tq *Taskqueue) Stop() {
 // Start handles the creation of all workers for all configured tasks,
 // and the initialization for the stats-package.
 func (tq *Taskqueue) Start() {
+	tq.errorBackoff = make(map[string]*backoff.Backoff, 0)
+
 	for _, configTask := range tq.config.Tasks {
 		if configTask.BackoffEnabled {
 			tq.errorBackoff[configTask.Type] = &backoff.Backoff{
