@@ -12,11 +12,15 @@ As Gordon just executes commands, you can use any kind of script or application,
 Getting Started
 ===
 
-1. Setup
+1. Build
 ---
 
-Get the latest binary from the releases or build it yourself:
+Get the latest source and build the binary:
 ```sh
+# clone repo
+git clone https://github.com/nevsnode/gordon.git
+cd gordon/
+
 # get/update necessary libraries
 go get -u github.com/mediocregopher/radix.v2
 go get -u github.com/BurntSushi/toml
