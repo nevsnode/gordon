@@ -46,15 +46,18 @@ func (tq *Taskqueue) SetConfig(c config.Config) {
 
 	var err error
 
-	// create a connection-pool for the addFailedTask-routine, as soon
-	// as there is at least one task using this functionality
+	// calculate size of connection-pool for the addFailedTask-routine
+	poolSize := 0
 	for _, configTask := range c.Tasks {
 		if configTask.FailedTasksTTL > 0 {
-			tq.failedConnPool, err = pool.New(c.RedisNetwork, c.RedisAddress, len(c.Tasks))
-			if err != nil {
-				tq.output.StopError(fmt.Sprintf("pool.New(): %s", err))
-			}
-			break
+			poolSize += configTask.Workers
+		}
+	}
+
+	if poolSize > 0 {
+		tq.failedConnPool, err = pool.New(c.RedisNetwork, c.RedisAddress, poolSize)
+		if err != nil {
+			tq.output.StopError(fmt.Sprintf("pool.New(): %s", err))
 		}
 	}
 }
@@ -231,6 +234,7 @@ func (tq *Taskqueue) addFailedTask(ct config.Task, qt QueueTask) {
 		tq.output.NotifyError(fmt.Sprintf("tq.failedConnPool.Get(): %s", err))
 		return
 	}
+	defer tq.failedConnPool.Put(rc)
 
 	queueKey := tq.config.RedisQueueKey + ":" + ct.Type + ":failed"
 
@@ -253,6 +257,4 @@ func (tq *Taskqueue) addFailedTask(ct config.Task, qt QueueTask) {
 		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), EXPIRE: %s", reply.Err))
 		return
 	}
-
-	tq.failedConnPool.Put(rc)
 }
