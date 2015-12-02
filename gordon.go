@@ -18,7 +18,7 @@ import (
 )
 
 // GordonVersion is the current version of Gordon
-const GordonVersion = "1.4.0"
+const GordonVersion = "1.4.1"
 
 const defaultConfig = "./gordon.config.toml"
 
