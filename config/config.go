@@ -2,8 +2,8 @@
 package config
 
 import (
-	"../basepath"
 	"github.com/BurntSushi/toml"
+	"github.com/nevsnode/gordon/utils"
 	"io/ioutil"
 )
 
@@ -15,6 +15,9 @@ type Config struct {
 	ErrorScript    string          `toml:"error_script"`     // path to script/application that is executed when a task created an error
 	FailedTasksTTL int             `toml:"failed_tasks_ttl"` // ttl for the lists that store failed tasks
 	TempDir        string          `toml:"temp_dir"`         // path to a directory that is used for temporary files
+	IntervalMin    int             `toml:"interval_min"`     // minimum interval for checking for new tasks
+	IntervalMax    int             `toml:"interval_max"`     // maxiumum interval for checking for new tasks
+	IntervalFactor float64         `toml:"interval_factor"`  // multiplicator for the task-check interval
 	BackoffEnabled bool            `toml:"backoff_enabled"`  // general flag to disable/enable error-backoff
 	BackoffMin     int             `toml:"backoff_min"`      // general error-backoff start value in milliseconds
 	BackoffMax     int             `toml:"backoff_max"`      // general error-backoff maximum value in milliseconds
@@ -58,13 +61,39 @@ func New(path string) (c Config, err error) {
 	}
 
 	// take care of default-value
-	if c.RedisNetwork == "" {
+	if c.RedisNetwork != "tcp" || c.RedisNetwork != "udp" {
 		c.RedisNetwork = "tcp"
+	}
+
+	// ensure reasonable interval-values
+	if c.IntervalMin < 100 {
+		c.IntervalMin = 100
+	}
+	if c.IntervalMax < c.IntervalMin {
+		c.IntervalMax = c.IntervalMin
+	}
+	if c.IntervalFactor < 1 {
+		c.IntervalFactor = 1
+	}
+
+	// make sure that the backoff values are positive
+	if c.BackoffMin < 0 {
+		c.BackoffMin = 0
+	}
+	if c.BackoffMax < 0 {
+		c.BackoffMax = 0
+	}
+	if c.BackoffFactor < 0 {
+		c.BackoffFactor = 0
 	}
 
 	for taskType, task := range c.Tasks {
 		task.Type = taskType
-		task.Script = basepath.With(task.Script)
+		task.Script = utils.Basepath(task.Script)
+
+		if task.Workers < 1 {
+			task.Workers = 1
+		}
 
 		// override the failed-task-ttl if not set on this level
 		if task.FailedTasksTTL == 0 && c.FailedTasksTTL > 0 {
@@ -91,10 +120,10 @@ func New(path string) (c Config, err error) {
 			task.BackoffMin = 100
 		}
 		if task.BackoffMax < task.BackoffMin {
-			task.BackoffMax = 2 * task.BackoffMin
+			task.BackoffMax = task.BackoffMin
 		}
-		if task.BackoffFactor < 2 {
-			task.BackoffFactor = 2
+		if task.BackoffFactor < 1 {
+			task.BackoffFactor = 1
 		}
 
 		c.Tasks[taskType] = task
