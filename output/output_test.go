@@ -1,8 +1,8 @@
 package output
 
 import (
-	"../basepath"
 	"fmt"
+	"github.com/nevsnode/gordon/utils"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -18,100 +18,104 @@ func resetTestOutput() {
 type testLogger struct{}
 
 func (t testLogger) Println(input ...interface{}) {
-	testOutput = fmt.Sprint(input...)
+	testOutput = fmt.Sprintln(input...)
 }
 
 func TestOutput(t *testing.T) {
-	out := New()
 	l := testLogger{}
-	out.logger = l
+	logger = l
 	msg := "test output"
 
-	out.SetDebug(true)
-	if out.debug != true {
-		t.Log("output.debug should be true")
+	SetDebug(true)
+	if debug != true {
+		t.Log("debug should be true")
 		t.FailNow()
 	}
 
-	out.SetDebug(false)
-	if out.debug != false {
-		t.Log("output.debug should be false")
+	SetDebug(false)
+	if debug != false {
+		t.Log("debug should be false")
 		t.FailNow()
 	}
 
 	resetTestOutput()
-	out.SetDebug(false)
-	out.Debug(msg)
+	SetDebug(false)
+	Debug(msg)
 	if testOutput != "" {
-		t.Log("No output should be produced when output.debug is false")
+		t.Log("No output should be produced when debug is false")
 		t.Fail()
 	}
 
 	resetTestOutput()
-	out.SetDebug(true)
-	out.Debug(msg)
-	if testOutput != msg {
-		t.Log("The debug-message should be printed when output.debug is true")
+	SetDebug(true)
+	Debug(msg)
+	if testOutput != msg+"\n" {
+		t.Log("The debug-message should be printed when debug is true")
+		t.Fail()
+	}
+
+	resetTestOutput()
+	Debug("a", "b", 3)
+	if testOutput != "a b 3\n" {
+		t.Log("Debug() should accept multiple parameters of several types")
 		t.Fail()
 	}
 }
 
 func TestOutputNotify(t *testing.T) {
-	out := New()
 	l := testLogger{}
-	out.logger = l
+	logger = l
 	msg := "test output"
 
-	if out.errorScript != "" {
-		t.Log("output.errorScript should be empty by default")
+	if errorScript != "" {
+		t.Log("errorScript should be empty by default")
 		t.Fail()
 	}
 
 	resetTestOutput()
-	out.notify(msg)
+	notify(msg)
 	if testOutput != "" {
-		t.Log("output.notify() should not create any output when output.errorScript is empty")
+		t.Log("notify() should not create any output when errorScript is empty")
 		t.Fail()
 	}
 
 	errorScript := "/bin/true"
-	out.SetErrorScript(errorScript)
-	if errorScript != out.errorScript {
-		t.Log("output.errorScript should be the value that was set through output.SetErrorScript")
+	SetErrorScript(errorScript)
+	if errorScript != errorScript {
+		t.Log("errorScript should be the value that was set through SetErrorScript")
 		t.FailNow()
 	}
 
 	resetTestOutput()
-	out.notify(msg)
+	notify(msg)
 	if testOutput != "" {
-		t.Log("output.notify() should not create output when executing a valid/successful command")
+		t.Log("notify() should not create output when executing a valid/successful command")
 		t.Fail()
 	}
 
 	resetTestOutput()
 	errorScript = "/bin/cat"
-	out.SetErrorScript(errorScript)
-	out.notify(msg)
+	SetErrorScript(errorScript)
+	notify(msg)
 	if testOutput == "" {
-		t.Log("output.notify() should create output when executing a command that created output")
+		t.Log("notify() should create output when executing a command that created output")
 		t.Fail()
 	}
 }
 
 func TestOutputLogfile(t *testing.T) {
-	path := basepath.With("./output.test.log")
+	path := utils.Basepath("./output.test.log")
 	msg := "test output"
 
-	out := New()
-	err := out.SetLogfile(path)
+	err := SetLogfile(path)
 	if err != nil {
-		t.Log("output.SetLogfile() should not return an error")
+		t.Log("SetLogfile() should not return an error")
 		t.Log("err: ", err)
 		t.FailNow()
 	}
 
-	out.SetDebug(true)
-	out.Debug(msg)
+	SetDebug(true)
+	Debug(msg)
 
 	b, err := ioutil.ReadFile(path)
 	if err != nil {

@@ -12,13 +12,6 @@ import (
 	"os/exec"
 )
 
-var (
-	outputTempFileError       = "Failed writing temporary file: %s"
-	outputTempFileRemoveError = "Failed removing temporary file: %s"
-	outputCmdError            = "Failed calling ErrorScript: %s"
-	outputCmdErrorOutput      = "Failed calling ErrorScript (created output): %s; Script: %s"
-)
-
 // outputLogger is an interface implemented by objects that
 // handle the messages from within Gordon.
 // This gives the possibility to provide our own handler for testing purposes.
@@ -26,112 +19,109 @@ type outputLogger interface {
 	Println(...interface{})
 }
 
-// An Output provides routines to handle messages within Gordon.
-type Output struct {
-	debug       bool
-	errorScript string
-	tempDir     string
+var (
+	debug       = false
+	errorScript = ""
+	tempDir     = ""
 	logger      outputLogger
-}
 
-// New returns a new instance of Output, writing the messages to stdout per default.
-func New() Output {
-	l := log.New(os.Stdout, "", log.LstdFlags)
+	errorOutputTempFile       = "Failed writing temporary file: %s"
+	errorOutputTempFileRemove = "Failed removing temporary file: %s"
+	errorOutputCmd            = "Failed calling ErrorScript: %s"
+	errorOutputCmdOutput      = "Failed calling ErrorScript (created output): %s; Script: %s"
+)
 
-	return Output{
-		logger: l,
-	}
+func init() {
+	logger = log.New(os.Stdout, "", log.LstdFlags)
 }
 
 // SetDebug enables/disables debugging output.
-func (o *Output) SetDebug(d bool) {
-	o.debug = d
+func SetDebug(d bool) {
+	debug = d
 }
 
 // SetErrorScript sets the command used for notifying about certain messages.
-func (o *Output) SetErrorScript(script string) {
-	o.errorScript = script
+func SetErrorScript(script string) {
+	errorScript = script
 }
 
 // SetTempDir sets the directory used for temporary files.
-func (o *Output) SetTempDir(tempDir string) {
-	o.tempDir = tempDir
+func SetTempDir(tempDir string) {
+	tempDir = tempDir
 }
 
 // SetLogfile modifies the Output object to write messages to the given logfile instead of stdout.
 // It may return an error, if something went wrong with opening the file.
-func (o *Output) SetLogfile(path string) error {
+func SetLogfile(path string) error {
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 
-	l := log.New(file, "", log.LstdFlags)
-	o.logger = l
+	logger = log.New(file, "", log.LstdFlags)
 	return nil
 }
 
 // Debug writes a message to the current output, when debugging output is enabled.
-func (o Output) Debug(msg string) {
-	if o.debug {
-		o.logger.Println(msg)
+func Debug(msg ...interface{}) {
+	if debug {
+		logger.Println(msg...)
 	}
 }
 
 // StopError writes a message to the current output, executes the notify-command
 // and exits Gordon with the status 1.
-func (o Output) StopError(msg string) {
-	o.logger.Println(msg)
-	o.notify(msg)
+func StopError(msg ...interface{}) {
+	NotifyError(msg...)
 	os.Exit(1)
 }
 
 // NotifyError executes the notify-command with a given message.
-func (o Output) NotifyError(msg string) {
-	o.Debug(msg)
-	o.notify(msg)
+func NotifyError(msg ...interface{}) {
+	logger.Println(msg...)
+	notify(msg...)
 }
 
 // notify tries to execute the notify-command with the given message.
 // In case of an error it will write the error and message to the current output.
-func (o Output) notify(msg string) {
-	// Check if ErrorScript is even defined
-	if o.errorScript == "" {
+func notify(msg ...interface{}) {
+	// Check if error-script is even defined
+	if errorScript == "" {
 		return
 	}
 
 	// Write temporary file
-	tempFile, err := o.writeTempFile(msg)
+	tempFile, err := writeTempFile(fmt.Sprintln(msg...))
 	if err != nil {
-		o.logger.Println(fmt.Sprintf(outputTempFileError, err))
+		logger.Println(fmt.Sprintf(errorOutputTempFile, err))
 
-		// As the ErrorScript depends on the temporary file we stop here
+		// As the error-script depends on the temporary file we stop here
 		return
 	}
 
-	// Execute ErrorScript
-	out, err := exec.Command(o.errorScript, tempFile).Output()
+	// Execute error-script
+	out, err := exec.Command(errorScript, tempFile).Output()
 
-	// The ErrorScript caused an error ...
+	// The error-script caused an error ...
 	if err != nil {
-		o.logger.Println(fmt.Sprintf(outputCmdError, err))
+		logger.Println(fmt.Sprintf(errorOutputCmd, err))
 	}
 
 	// ... or returned output
 	if len(out) != 0 && err == nil {
-		o.logger.Println(fmt.Sprintf(outputCmdErrorOutput, out, o.errorScript))
+		logger.Println(fmt.Sprintf(errorOutputCmdOutput, out, errorScript))
 	}
 
 	// Remove temporary file
 	err = os.Remove(tempFile)
 	if err != nil {
-		o.logger.Println(fmt.Sprintf(outputTempFileRemoveError, err))
+		logger.Println(fmt.Sprintf(errorOutputTempFileRemove, err))
 	}
 }
 
 // writeTempFile creates a temporary file in the tempDir-directory that stores the given message.
-func (o Output) writeTempFile(msg string) (filename string, err error) {
-	file, err := ioutil.TempFile(o.tempDir, "gordon")
+func writeTempFile(msg string) (filename string, err error) {
+	file, err := ioutil.TempFile(tempDir, "gordon")
 	if err != nil {
 		return
 	}
