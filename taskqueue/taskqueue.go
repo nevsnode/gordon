@@ -76,11 +76,12 @@ func Start(c config.Config) {
 		workerChan[ct.Type] = make(chan QueueTask, backlog)
 
 		for i := 0; i < ct.Workers; i++ {
+			waitGroup.Add(1)
 			go taskWorker(ct)
 		}
 	}
 
-	waitGroup.Add(1)
+	waitGroupFailed.Add(1)
 	go failedTaskWorker()
 
 	waitGroup.Add(1)
@@ -237,8 +238,6 @@ func taskWorker(ct config.Task) {
 }
 
 func failedTaskWorker() {
-	waitGroupFailed.Add(1)
-
 	for ft := range failedChan {
 		ct := ft.configTask
 		qt := ft.queueTask
