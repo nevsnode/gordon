@@ -31,6 +31,18 @@ failed_tasks_ttl = 172800
 # If commented or an empty string, the system-default will be used.
 # temp_dir = "/tmp"
 
+# Check internal settings
+# These values define how often the application will look for new tasks. When no
+# new tasks were found the interval is increased by the defined values (minimum value
+# and factor). When at least on task is found again the interval will be reset to the minium.
+
+# The miminum check-interval for new tasks, in ms.
+interval_min = 250
+# The maximum check-interval for new tasks, in ms.
+interval_max = 30000
+# The multiplicator of the minimum interval when no new tasks were found, as float.
+interval_factor = 2.0
+
 # Error backoff settings (global)
 # The values here are applied to all tasks, unless specified (a value greater than 0)
 # on task-level, except for backoff_enabled. If `backoff_enabled = true`, it will
@@ -47,24 +59,24 @@ backoff_factor = 2.0
 
 # Statistics related settings
 [stats]
-    # Interface where a webservice will listen on.
-    # If commented or an empty string, no webservice will be created.
-    # interface = "127.0.0.1:8080"
+# Interface where a webservice will listen on.
+# If commented or an empty string, no webservice will be created.
+# interface = "127.0.0.1:8080"
 
-    # Url pattern where the statistics-webservice will respond to
-    pattern = "/"
+# Url pattern where the statistics-webservice will respond to
+pattern = "/"
 
-    # Certificate settings for the statistics-webservice.
-    # If these are defined https will be used, otherweise http.
-    # tls_cert_file = "/etc/ssl/private/certificate.crt"
-    # tls_key_file = "/etc/ssl/private/private.key"
+# Certificate settings for the statistics-webservice.
+# If these are defined https will be used, otherweise http.
+# tls_cert_file = "/etc/ssl/private/certificate.crt"
+# tls_key_file = "/etc/ssl/private/private.key"
 
 # Task related tables
 [tasks]
 
-    # This table configures a task with the type 'something'.
-    # Just create a new table for every task you want to handle,
-    # and adjust their type & script-paths accordingly.
-    [tasks.something]
-    script = "/opt/something.php"
-    # workers = 2
+# This table configures a task with the type 'something'.
+# Just create a new table for every task you want to handle,
+# and adjust their type & script-paths accordingly.
+[tasks.something]
+script = "/opt/something.php"
+# workers = 2
