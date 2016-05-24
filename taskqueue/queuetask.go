@@ -1,9 +1,4 @@
 // Package taskqueue provides the functionality for receiving, handling and executing tasks.
-// This package provides the routines for the task- and queue-workers.
-// Queue-workers are the go-routines that wait for entries in the Redis-lists,
-// parse them and send them to the task-workers.
-// Task-workers are the go-routines that finally execute the tasks that they receive
-// from the queue-workers.
 // In this file are the routines for the task-structs used in the taskqueue.
 package taskqueue
 

@@ -1,260 +1,289 @@
 // Package taskqueue provides the functionality for receiving, handling and executing tasks.
-// This package provides the routines for the task- and queue-workers.
-// Queue-workers are the go-routines that wait for entries in the Redis-lists,
-// parse them and send them to the task-workers.
-// Task-workers are the go-routines that finally execute the tasks that they receive
-// from the queue-workers.
 // In this file are the routines for the taskqueue itself.
 package taskqueue
 
 import (
-	"../config"
-	"../output"
-	"../stats"
 	"fmt"
 	"github.com/jpillora/backoff"
 	"github.com/mediocregopher/radix.v2/pool"
-	"github.com/mediocregopher/radix.v2/redis"
+	"github.com/nevsnode/gordon/config"
+	"github.com/nevsnode/gordon/output"
+	"github.com/nevsnode/gordon/stats"
 	"strings"
 	"sync"
 	"time"
 )
 
-// A Taskqueue offers routines for the task-workers and queue-workers.
-// It also offers routines to set the config-, output- and stats-objects,
-// which are used from the worker-routines.
-type Taskqueue struct {
-	waitGroup      sync.WaitGroup              // wait group used to handle a proper application shutdown
-	config         config.Config               // config object, storing, for instance, connection data
-	output         output.Output               // output object for handling debug-/error-messages and notifying about task execution errors
-	stats          *stats.Stats                // stats object for gathering usage data
-	quit           chan int                    // channel used to gracefully shutdown all go-routines
-	failedConnPool *pool.Pool                  // pool of connections used for inserting failed task into their lists
-	errorBackoff   map[string]*backoff.Backoff // map of backoff instances, each for every task-type
+const (
+	backlog = 1
+)
+
+type failedTask struct {
+	configTask config.Task
+	queueTask  QueueTask
 }
 
-// New returns a new instance of a Taskqueue
-func New() Taskqueue {
-	return Taskqueue{
-		quit: make(chan int),
+var (
+	errorNoNewTask          = fmt.Errorf("No new task available")
+	errorNoNewTasksAccepted = fmt.Errorf("No new tasks accepted")
+
+	conf            config.Config
+	shutdown        bool
+	shutdownChan    chan bool
+	waitGroup       sync.WaitGroup
+	waitGroupFailed sync.WaitGroup
+	redisPool       *pool.Pool
+	errorBackoff    map[string]*backoff.Backoff
+	workerChan      map[string]chan QueueTask
+	failedChan      chan failedTask
+)
+
+// Start initialises several variables and creates necessary go-routines
+func Start(c config.Config) {
+	conf = c
+
+	poolSize := 1
+	for _, ct := range conf.Tasks {
+		if ct.FailedTasksTTL > 0 {
+			poolSize++
+			break
+		}
 	}
-}
-
-// SetConfig sets the config object
-func (tq *Taskqueue) SetConfig(c config.Config) {
-	tq.config = c
 
 	var err error
-
-	// calculate size of connection-pool for the addFailedTask-routine
-	poolSize := 0
-	for _, configTask := range c.Tasks {
-		if configTask.FailedTasksTTL > 0 {
-			poolSize += configTask.Workers
-		}
+	redisPool, err = pool.New(conf.RedisNetwork, conf.RedisAddress, poolSize)
+	if err != nil {
+		output.NotifyError("redis pool.New():", err)
 	}
 
-	if poolSize > 0 {
-		tq.failedConnPool, err = pool.New(c.RedisNetwork, c.RedisAddress, poolSize)
-		if err != nil {
-			tq.output.StopError(fmt.Sprintf("pool.New(): %s", err))
-		}
-	}
-}
+	stats.InitTasks(conf.Tasks)
 
-// SetOutput sets the output object
-func (tq *Taskqueue) SetOutput(o output.Output) {
-	tq.output = o
-}
+	workerChan = make(map[string]chan QueueTask)
+	failedChan = make(chan failedTask)
+	shutdownChan = make(chan bool, 1)
 
-// SetStats sets the stats object
-func (tq *Taskqueue) SetStats(s *stats.Stats) {
-	tq.stats = s
-}
-
-// createWorkers creates all worker go-routines.
-func (tq *Taskqueue) createWorkers(ct config.Task) {
-	queue := make(chan QueueTask)
-
-	if ct.Workers <= 1 {
-		ct.Workers = 1
-	}
-
-	for i := 0; i < ct.Workers; i++ {
-		tq.waitGroup.Add(1)
-		go tq.taskWorker(ct, queue)
-	}
-	tq.output.Debug(fmt.Sprintf("Created %d workers for type %s", ct.Workers, ct.Type))
-
-	tq.waitGroup.Add(1)
-	go tq.queueWorker(ct, queue)
-	tq.output.Debug(fmt.Sprintf("Created queue worker for type %s", ct.Type))
-}
-
-// Wait waits for the waitGroup to keep the application running, for as long as there
-// are any go-routines active.
-func (tq *Taskqueue) Wait() {
-	tq.waitGroup.Wait()
-
-	if tq.failedConnPool != nil {
-		tq.failedConnPool.Empty()
-	}
-}
-
-// Stop triggers the graceful shutdown of all worker-routines.
-func (tq *Taskqueue) Stop() {
-	close(tq.quit)
-}
-
-// Start handles the creation of all workers for all configured tasks,
-// and the initialization for the stats-package.
-func (tq *Taskqueue) Start() {
-	tq.errorBackoff = make(map[string]*backoff.Backoff, 0)
-
-	for _, configTask := range tq.config.Tasks {
-		if configTask.BackoffEnabled {
-			tq.errorBackoff[configTask.Type] = &backoff.Backoff{
-				Min:    time.Duration(configTask.BackoffMin) * time.Millisecond,
-				Max:    time.Duration(configTask.BackoffMax) * time.Millisecond,
-				Factor: configTask.BackoffFactor,
+	errorBackoff = make(map[string]*backoff.Backoff)
+	for _, ct := range conf.Tasks {
+		if ct.BackoffEnabled {
+			errorBackoff[ct.Type] = &backoff.Backoff{
+				Min:    time.Duration(ct.BackoffMin) * time.Millisecond,
+				Max:    time.Duration(ct.BackoffMax) * time.Millisecond,
+				Factor: ct.BackoffFactor,
 				Jitter: true,
 			}
 		}
 
-		tq.stats.InitTask(configTask.Type)
+		workerChan[ct.Type] = make(chan QueueTask, backlog)
 
-		tq.createWorkers(configTask)
+		for i := 0; i < ct.Workers; i++ {
+			go taskWorker(ct)
+		}
+	}
+
+	waitGroup.Add(1)
+	go failedTaskWorker()
+
+	waitGroup.Add(1)
+	go queueWorker()
+}
+
+// Stop will cause the taskqueue to stop accepting new tasks and shutdown the
+// worker routines after they've finished their current tasks
+func Stop() {
+	if shutdown {
+		return
+	}
+
+	shutdown = true
+	shutdownChan <- true
+
+	for taskType := range workerChan {
+		close(workerChan[taskType])
 	}
 }
 
-// queueWorker connects to Redis and listens to the Redis-list for the according config.Task.
-// This routine gets entries from Redis, tries to parse them into QueueTask and sends them
-// to the according instances of taskWorker.
-func (tq *Taskqueue) queueWorker(ct config.Task, queue chan QueueTask) {
-	rc, err := redis.Dial(tq.config.RedisNetwork, tq.config.RedisAddress)
-	if err != nil {
-		tq.output.StopError(fmt.Sprintf("redis.Dial(): %s", err))
+// Wait waits, to keep the application running as long as there are workers
+func Wait() {
+	waitGroup.Wait()
+
+	close(failedChan)
+	waitGroupFailed.Wait()
+
+	redisPool.Empty()
+}
+
+func queueWorker() {
+	interval := backoff.Backoff{
+		Min:    time.Duration(conf.IntervalMin) * time.Millisecond,
+		Max:    time.Duration(conf.IntervalMax) * time.Millisecond,
+		Factor: conf.IntervalFactor,
 	}
-	defer rc.Close()
 
-	queueKey := tq.config.RedisQueueKey + ":" + ct.Type
-
-	// This go-routine waits for the quit-channel to close, which signals to shutdown of
-	// all worker-routines. We achieve that by closing the Redis-connection and catching that error.
-	shutdown := false
+	runIntervalLoop := make(chan bool)
+	var runningIntervalLoop sync.WaitGroup
 	go func() {
-		_, ok := <-tq.quit
-		if !ok {
-			shutdown = true
-			rc.Close()
-			tq.output.Debug(fmt.Sprintf("Shutting down workers for type %s", ct.Type))
+		for {
+			runningIntervalLoop.Wait()
+			time.Sleep(interval.Duration())
+
+			if shutdown {
+				break
+			}
+
+			runIntervalLoop <- true
+			runningIntervalLoop.Add(1)
 		}
 	}()
 
-	for {
-		values, err := rc.Cmd("BLPOP", queueKey, 0).List()
-		if err != nil {
-			// Errors here will likely be connection errors. Therefore we'll just
-			// notify about the error and break the loop, which will stop the queueWorker
-			// and all related taskWorker instances for this config.Task.
-			// When shutdown == true, we're currently handling a graceful shutdown,
-			// so we won't notify in that case and just break the loop.
-			if shutdown == false {
-				msg := fmt.Sprintf("Redis Error:\n%s\nStopping task %s.", err, ct.Type)
-				tq.output.NotifyError(msg)
+	go func() {
+		for {
+			select {
+			case <-shutdownChan:
+				runIntervalLoop <- false
 			}
-			break
 		}
+	}()
 
-		for _, value := range values {
-			// BLPOP can return entries from multiple lists. It therefore includes the
-			// list-name where the returned entry comes from, which we don't need, as we only have one list.
-			// We only need the "real" entry, so we just skip that "value" from Redis.
-			if value == queueKey {
+	for <-runIntervalLoop {
+		for taskType, configTask := range conf.Tasks {
+			if shutdown {
+				break
+			}
+
+			output.Debug("Checking for new tasks (" + taskType + ")")
+
+			// check if there are available workers
+			if !acceptsTasks(taskType) {
 				continue
 			}
 
-			tq.output.Debug(fmt.Sprintf("Received task for type %s with payload %s", ct.Type, value))
+			queueKey := conf.RedisQueueKey + ":" + taskType
 
-			task, err := NewQueueTask(value)
+			llen, err := redisPool.Cmd("LLEN", queueKey).Int()
 			if err != nil {
-				// Errors from NewQueueTask will just result in a notification.
-				// So we'll just skip this entry/task and continue with the next one.
-				msg := fmt.Sprintf("NewQueueTask(): %s", err)
-				tq.output.NotifyError(msg)
+				// Errors here are likely redis-connection errors, so we'll
+				// need to notify about it
+				output.NotifyError("redisPool.Cmd() Error:", err)
+				break
+			}
+
+			// there are no new tasks in redis
+			if llen == 0 {
 				continue
 			}
 
-			queue <- task
+			// iterate over all entries in redis, until no more are available,
+			// or all workers are busy, for a maximum of 2 * workers
+			for i := 0; i < (configTask.Workers * 2); i++ {
+				if !acceptsTasks(taskType) {
+					break
+				}
+
+				value, err := redisPool.Cmd("LPOP", queueKey).Str()
+				if err != nil {
+					// no more tasks found
+					break
+				}
+
+				output.Debug("Fetched task for type", taskType, "with payload", value)
+
+				task, err := NewQueueTask(value)
+				if err != nil {
+					output.NotifyError("NewQueueTask():", err)
+					continue
+				}
+
+				workerChan[taskType] <- task
+
+				// we've actually are handling new tasks so reset the interval
+				interval.Reset()
+			}
 		}
+
+		runningIntervalLoop.Done()
 	}
 
-	close(queue)
-	tq.waitGroup.Done()
+	Stop()
+	waitGroup.Done()
 }
 
-// taskWorker waits for QueueTask items and executes them. If they return an error,
-// it the output object to notify about that error.
-func (tq *Taskqueue) taskWorker(ct config.Task, queue chan QueueTask) {
-	for task := range queue {
-		tq.output.Debug(fmt.Sprintf("Executing task type %s with payload %s", ct.Type, task.Args))
-		tq.stats.IncrTaskCount(ct.Type)
+func taskWorker(ct config.Task) {
+	for task := range workerChan[ct.Type] {
+		output.Debug("Executing task type", ct.Type, "with arguments", task.Args)
+		stats.IncrTaskCount(ct.Type)
 
 		err := task.Execute(ct.Script)
-
 		if err != nil {
 			task.ErrorMessage = fmt.Sprintf("%s", err)
-			tq.addFailedTask(ct, task)
+			failedChan <- failedTask{
+				configTask: ct,
+				queueTask:  task,
+			}
 
 			msg := fmt.Sprintf("Failed executing task:\n%s \"%s\"\n\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
-			tq.output.NotifyError(msg)
+			output.NotifyError(msg)
 		}
 
-		if tq.errorBackoff[ct.Type] != nil {
+		if errorBackoff[ct.Type] != nil {
 			if err == nil {
-				tq.errorBackoff[ct.Type].Reset()
+				errorBackoff[ct.Type].Reset()
 			} else {
-				time.Sleep(tq.errorBackoff[ct.Type].Duration())
+				time.Sleep(errorBackoff[ct.Type].Duration())
 			}
 		}
 	}
 
-	tq.waitGroup.Done()
+	waitGroup.Done()
 }
 
-// addFailedTask adds a failed task to a specific list into redis, so it can be handled
-// afterwards. If the optional ttl-setting for these lists is not set, the feature is disabled.
-func (tq *Taskqueue) addFailedTask(ct config.Task, qt QueueTask) {
-	if ct.FailedTasksTTL == 0 {
-		return
+func failedTaskWorker() {
+	waitGroupFailed.Add(1)
+
+	for ft := range failedChan {
+		ct := ft.configTask
+		qt := ft.queueTask
+
+		if ct.FailedTasksTTL == 0 {
+			return
+		}
+
+		rc, err := redisPool.Get()
+		if err != nil {
+			output.NotifyError("redisPool.Get():", err)
+			return
+		}
+		defer redisPool.Put(rc)
+
+		queueKey := conf.RedisQueueKey + ":" + ct.Type + ":failed"
+
+		jsonString, err := qt.GetJSONString()
+		if err != nil {
+			output.NotifyError("addFailedTask(), qt.GetJSONString():", err)
+			return
+		}
+
+		// add to list
+		reply := rc.Cmd("RPUSH", queueKey, jsonString)
+		if reply.Err != nil {
+			output.NotifyError("addFailedTask(), RPUSH:", reply.Err)
+			return
+		}
+
+		// set expire
+		reply = rc.Cmd("EXPIRE", queueKey, ct.FailedTasksTTL)
+		if reply.Err != nil {
+			output.NotifyError("addFailedTask(), EXPIRE:", reply.Err)
+			return
+		}
 	}
 
-	rc, err := tq.failedConnPool.Get()
-	if err != nil {
-		tq.output.NotifyError(fmt.Sprintf("tq.failedConnPool.Get(): %s", err))
-		return
-	}
-	defer tq.failedConnPool.Put(rc)
+	waitGroupFailed.Done()
+}
 
-	queueKey := tq.config.RedisQueueKey + ":" + ct.Type + ":failed"
-
-	jsonString, err := qt.GetJSONString()
-	if err != nil {
-		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), ct.GetJSONString(): %s", err))
-		return
+func acceptsTasks(taskType string) bool {
+	if shutdown {
+		return false
 	}
 
-	// add to list
-	reply := rc.Cmd("RPUSH", queueKey, jsonString)
-	if reply.Err != nil {
-		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), RPUSH: %s", reply.Err))
-		return
-	}
-
-	// set expire
-	reply = rc.Cmd("EXPIRE", queueKey, ct.FailedTasksTTL)
-	if reply.Err != nil {
-		tq.output.NotifyError(fmt.Sprintf("addFailedTask(), EXPIRE: %s", reply.Err))
-		return
-	}
+	return len(workerChan[taskType]) < backlog
 }
