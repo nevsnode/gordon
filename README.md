@@ -15,19 +15,12 @@ Getting Started
 1. Build
 ---
 
-Get the latest source and build the binary:
 ```sh
-# clone repo
-git clone https://github.com/nevsnode/gordon.git
-cd gordon/
-
-# get/update necessary libraries
-go get -u github.com/mediocregopher/radix.v2
-go get -u github.com/BurntSushi/toml
-go get -u github.com/jpillora/backoff
+# get/update the code
+go get -u github.com/nevsnode/gordon
 
 # build the binary
-go build
+go build github.com/nevsnode/gordon
 ```
 
 Then create a configuration file. You'll probably just want to copy the example file and name it `gordon.config.toml`.
@@ -64,9 +57,7 @@ Handling Tasks
 Creating Tasks
 ---
 
-Gordon essentially works by waiting for entries that are inserted into Redis-lists.
-It uses the [BLPOP](http://redis.io/commands/blpop) command, that blocks until an entry is added.
-With this approach tasks are received and executed immediately, unless there are no free "workers".
+Gordon essentially works by checking for entries in specific Redis-lists.
 
 The lists are named by this scheme:
 ```
@@ -158,33 +149,21 @@ Libraries
 As Gordon just reads and inserts to Redis, you can also just use the commonly used libraries for your programming language.
 
 
-Testing
+Development
 ===
 
+Updating the vendored libraries:
 ```sh
-go test ./...
+git subtree pull --squash --prefix=vendor/github.com/mediocregopher/radix.v2 https://github.com/mediocregopher/radix.v2 master
+git subtree pull --squash --prefix=vendor/github.com/BurntSushi/toml https://github.com/BurntSushi/toml master
+git subtree pull --squash --prefix=vendor/github.com/jpillora/backoff https://github.com/jpillora/backoff master
 ```
 
-License
+
+Credits
 ===
-The MIT License (MIT)
 
-Copyright (c) 2015 Sven Weintuch
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Kudos to the following libraries which are used by gordon:
+* [mediocregopher/radix.v2](https://github.com/mediocregopher/radix.v2)
+* [BurntSushi/toml](https://github.com/BurntSushi/toml)
+* [jpillora/backoff](https://github.com/jpillora/backoff)
