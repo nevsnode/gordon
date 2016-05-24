@@ -1,8 +1,8 @@
 package stats
 
 import (
-	"../config"
 	"encoding/json"
+	"github.com/nevsnode/gordon/config"
 	"net/http"
 	"reflect"
 	"testing"
@@ -12,28 +12,31 @@ import (
 var testTaskType = "mytask"
 
 func TestStats(t *testing.T) {
-	s := New()
 	now := getNowUnix()
 	tnow := time.Now().Unix()
 	if tnow != now {
 		t.Log("getNowUnix() should return the current unix timestamp")
 		t.FailNow()
 	}
-	if tnow != s.runtimeStart {
-		t.Log("stats.runtimeStart should have the current unix timestamp")
+	if tnow != runtimeStart {
+		t.Log("runtimeStart should have the current unix timestamp")
 		t.FailNow()
 	}
 
-	sr := s.getStats()
+	sr := getStats()
 	if len(sr.TaskCount) != 0 {
-		t.Log("The initial stats.TaskCount length should be 0")
+		t.Log("The initial TaskCount length should be 0")
 		t.Fail()
 	}
 
-	s.InitTask(testTaskType)
-	sr = s.getStats()
+	tasks := make(map[string]config.Task)
+	tasks[testTaskType] = config.Task{
+		Type: testTaskType,
+	}
+	InitTasks(tasks)
+	sr = getStats()
 	if len(sr.TaskCount) != 1 {
-		t.Log("After initializing one task stats.TaskCount length should be 1")
+		t.Log("After initializing one task TaskCount length should be 1")
 		t.Fail()
 	}
 	if sr.TaskCount[testTaskType] != 0 {
@@ -41,15 +44,15 @@ func TestStats(t *testing.T) {
 		t.Fail()
 	}
 
-	s.IncrTaskCount(testTaskType)
-	sr = s.getStats()
+	IncrTaskCount(testTaskType)
+	sr = getStats()
 	if sr.TaskCount[testTaskType] != 1 {
 		t.Log("The task-count after incrementing should be 1")
 		t.Fail()
 	}
 
 	time.Sleep(1 * time.Second)
-	sr = s.getStats()
+	sr = getStats()
 	if sr.Runtime < 1 {
 		t.Log("statsResponse.Runtime should be greater than 1, after waiting 1 second")
 		t.Fail()
@@ -57,17 +60,19 @@ func TestStats(t *testing.T) {
 }
 
 func TestStatsHttp(t *testing.T) {
-	s := New()
 	iface := "127.0.0.1:3333"
 	pattern := "/testpattern"
-	c := config.StatsConfig{Interface: iface, Pattern: pattern}
-	go s.Serve(c)
+	c := config.StatsConfig{
+		Interface: iface,
+		Pattern:   pattern,
+	}
+	go Serve(c)
 	time.Sleep(1 * time.Second)
 
-	s.InitTask(testTaskType)
-	s.IncrTaskCount(testTaskType)
+	InitTask(testTaskType)
+	IncrTaskCount(testTaskType)
 
-	sr := s.getStats()
+	sr := getStats()
 
 	url := "http://" + iface + pattern
 	resp, err := http.Get(url)
@@ -87,7 +92,7 @@ func TestStatsHttp(t *testing.T) {
 		t.FailNow()
 	}
 	if !reflect.DeepEqual(sr, sr2) {
-		t.Log("stats.getStats() should return the same value as the parsed http-response")
+		t.Log("getStats() should return the same value as the parsed http-response")
 		t.Fail()
 	}
 

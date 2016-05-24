@@ -2,19 +2,20 @@
 package stats
 
 import (
-	"../config"
 	"encoding/json"
 	"fmt"
+	"github.com/nevsnode/gordon/config"
 	"net/http"
 	"time"
 )
 
-// Stats provides routines to gather basic statistics and serve them through a HTTP-server.
-type Stats struct {
-	runtimeStart  int64
-	taskCount     map[string]int64
-	gordonVersion string
-}
+var (
+	// GordonVersion contains the current version of gordon
+	GordonVersion = ""
+
+	runtimeStart int64
+	taskCount    map[string]int64
+)
 
 // statsResponse is the response that will be returned from the HTTP-server,
 // containing the statistical data.
@@ -24,73 +25,50 @@ type statsResponse struct {
 	Version   string           `json:"version"`
 }
 
-// New returns a new instance of Stats.
-func New() Stats {
-	return Stats{
-		runtimeStart: getNowUnix(),
-		taskCount:    make(map[string]int64),
-	}
+func init() {
+	runtimeStart = getNowUnix()
+	taskCount = make(map[string]int64)
 }
 
-// SetVersion updates the version-number of the Gordon application.
-func (s *Stats) SetVersion(version string) {
-	s.gordonVersion = version
-}
-
-// InitTask initialises the task-counter for a certain task.
+// InitTask initialises the task-counter for the defined task-type.
 // The counter should be initialised so that it will be returned in the HTTP response,
 // even when it is 0.
-func (s *Stats) InitTask(task string) {
-	s.taskCount[task] = 0
+func InitTask(task string) {
+	taskCount[task] = 0
 }
 
-// IncrTaskCount increments the counter of a certain task.
-func (s *Stats) IncrTaskCount(task string) {
-	s.taskCount[task]++
-}
-
-// getStats returns an instance of the statsResponse which the HTTP-server should reply with.
-func (s Stats) getStats() statsResponse {
-	return statsResponse{
-		Runtime:   s.getRuntime(),
-		TaskCount: s.taskCount,
-		Version:   s.gordonVersion,
+// InitTasks initialises the counters for the defined task-types.
+func InitTasks(tasks map[string]config.Task) {
+	for taskType := range tasks {
+		InitTask(taskType)
 	}
 }
 
-// getRuntime returns the runtime of the application in seconds
-func (s Stats) getRuntime() int64 {
-	return getNowUnix() - s.runtimeStart
+// IncrTaskCount increments the counter of the defined task-type.
+func IncrTaskCount(task string) {
+	taskCount[task]++
 }
 
-// getNowUnix returns the current unix timestamp
-func getNowUnix() int64 {
-	return time.Now().Unix()
-}
-
-// Serve handles spawning the appropriate HTTP/HTTPS-server
-func (s Stats) Serve(c config.StatsConfig) error {
+// Serve handles spawning an appropriate HTTP/HTTPS-server
+func Serve(c config.StatsConfig) error {
 	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
-		return s.serveHTTPS(c.Interface, c.Pattern, c.TLSCertFile, c.TLSKeyFile)
+		return serveHTTPS(c.Interface, c.Pattern, c.TLSCertFile, c.TLSKeyFile)
 	}
-	return s.serveHTTP(c.Interface, c.Pattern)
+	return serveHTTP(c.Interface, c.Pattern)
 }
 
-// serveHTTP spawns an HTTP-server, that responds with a statsResponse in JSON.
-func (s Stats) serveHTTP(iface string, pattern string) error {
-	http.HandleFunc(pattern, s.httpHandle)
+func serveHTTP(iface string, pattern string) error {
+	http.HandleFunc(pattern, httpHandle)
 	return http.ListenAndServe(iface, nil)
 }
 
-// serveHTTPS spawns an HTTP-server, that responds with a statsResponse in JSON, expecting HTTPS connections.
-func (s Stats) serveHTTPS(iface string, pattern string, cert string, key string) error {
-	http.HandleFunc(pattern, s.httpHandle)
+func serveHTTPS(iface string, pattern string, cert string, key string) error {
+	http.HandleFunc(pattern, httpHandle)
 	return http.ListenAndServeTLS(iface, cert, key, nil)
 }
 
-// httpHandle is the handler that actually responds with the JSON statsResponse.
-func (s Stats) httpHandle(w http.ResponseWriter, r *http.Request) {
-	b, err := json.Marshal(s.getStats())
+func httpHandle(w http.ResponseWriter, r *http.Request) {
+	b, err := json.Marshal(getStats())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -98,4 +76,20 @@ func (s Stats) httpHandle(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf8")
 	fmt.Fprintf(w, fmt.Sprintf("%s", b))
+}
+
+func getStats() statsResponse {
+	return statsResponse{
+		Runtime:   getRuntime(),
+		TaskCount: taskCount,
+		Version:   GordonVersion,
+	}
+}
+
+func getRuntime() int64 {
+	return getNowUnix() - runtimeStart
+}
+
+func getNowUnix() int64 {
+	return time.Now().Unix()
 }
