@@ -257,21 +257,21 @@ func failedTaskWorker() {
 
 		jsonString, err := qt.GetJSONString()
 		if err != nil {
-			output.NotifyError("addFailedTask(), qt.GetJSONString():", err)
+			output.NotifyError("failedTaskWorker(), qt.GetJSONString():", err)
 			return
 		}
 
 		// add to list
 		reply := rc.Cmd("RPUSH", queueKey, jsonString)
 		if reply.Err != nil {
-			output.NotifyError("addFailedTask(), RPUSH:", reply.Err)
+			output.NotifyError("failedTaskWorker(), RPUSH:", reply.Err)
 			return
 		}
 
 		// set expire
 		reply = rc.Cmd("EXPIRE", queueKey, ct.FailedTasksTTL)
 		if reply.Err != nil {
-			output.NotifyError("addFailedTask(), EXPIRE:", reply.Err)
+			output.NotifyError("failedTaskWorker(), EXPIRE:", reply.Err)
 			return
 		}
 	}
