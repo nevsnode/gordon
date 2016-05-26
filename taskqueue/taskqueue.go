@@ -221,7 +221,7 @@ func taskWorker(ct config.Task) {
 				queueTask:  task,
 			}
 
-			msg := fmt.Sprintf("Failed executing task:\n%s \"%s\"\n\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
+			msg := fmt.Sprintf("Failed executing task: %s \"%s\"\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
 			output.NotifyError(msg)
 		}
 
