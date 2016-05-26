@@ -60,6 +60,14 @@ func TestOutput(t *testing.T) {
 		t.Log("Debug() should accept multiple parameters of several types")
 		t.Fail()
 	}
+
+	resetTestOutput()
+	Debug("foo\nbar")
+	if testOutput != "foo\n\tbar\n" {
+		t.Log("Text over multiple lines should be indented with a tabulator")
+		t.Log("Output:", testOutput)
+		t.Fail()
+	}
 }
 
 func TestOutputNotify(t *testing.T) {

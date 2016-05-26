@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // outputLogger is an interface implemented by objects that
@@ -62,10 +63,15 @@ func SetLogfile(path string) error {
 	return nil
 }
 
+func printLogger(msg ...interface{}) {
+	text := strings.Replace(fmt.Sprintln(msg...), "\n", "\n\t", -1)
+	logger.Println(strings.Trim(text, "\n\t"))
+}
+
 // Debug writes a message to the current output, when debugging output is enabled.
 func Debug(msg ...interface{}) {
 	if debug {
-		logger.Println(msg...)
+		printLogger(msg...)
 	}
 }
 
@@ -78,7 +84,7 @@ func StopError(msg ...interface{}) {
 
 // NotifyError executes the notify-command with a given message.
 func NotifyError(msg ...interface{}) {
-	logger.Println(msg...)
+	printLogger(msg...)
 	notify(msg...)
 }
 
@@ -93,7 +99,7 @@ func notify(msg ...interface{}) {
 	// Write temporary file
 	tempFile, err := writeTempFile(fmt.Sprintln(msg...))
 	if err != nil {
-		logger.Println(fmt.Sprintf(errorOutputTempFile, err))
+		printLogger(fmt.Sprintf(errorOutputTempFile, err))
 
 		// As the error-script depends on the temporary file we stop here
 		return
@@ -104,18 +110,18 @@ func notify(msg ...interface{}) {
 
 	// The error-script caused an error ...
 	if err != nil {
-		logger.Println(fmt.Sprintf(errorOutputCmd, err))
+		printLogger(fmt.Sprintf(errorOutputCmd, err))
 	}
 
 	// ... or returned output
 	if len(out) != 0 && err == nil {
-		logger.Println(fmt.Sprintf(errorOutputCmdOutput, out, errorScript))
+		printLogger(fmt.Sprintf(errorOutputCmdOutput, out, errorScript))
 	}
 
 	// Remove temporary file
 	err = os.Remove(tempFile)
 	if err != nil {
-		logger.Println(fmt.Sprintf(errorOutputTempFileRemove, err))
+		printLogger(fmt.Sprintf(errorOutputTempFileRemove, err))
 	}
 }
 
