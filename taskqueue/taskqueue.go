@@ -232,6 +232,8 @@ func taskWorker(ct config.Task) {
 				time.Sleep(errorBackoff[ct.Type].Duration())
 			}
 		}
+
+		output.Debug("Finished task type", ct.Type, "with arguments", task.Args)
 	}
 
 	waitGroup.Done()
