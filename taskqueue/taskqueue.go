@@ -33,7 +33,6 @@ var (
 	waitGroup       sync.WaitGroup
 	waitGroupFailed sync.WaitGroup
 	redisPool       *pool.Pool
-	errorBackoff    map[string]*backoff.Backoff
 	workerChan      map[string]chan QueueTask
 	failedChan      chan failedTask
 )
@@ -62,10 +61,10 @@ func Start(c config.Config) {
 	failedChan = make(chan failedTask)
 	shutdownChan = make(chan bool, 1)
 
-	errorBackoff = make(map[string]*backoff.Backoff)
 	for _, ct := range conf.Tasks {
+		var eb *backoff.Backoff
 		if ct.BackoffEnabled {
-			errorBackoff[ct.Type] = &backoff.Backoff{
+			eb = &backoff.Backoff{
 				Min:    time.Duration(ct.BackoffMin) * time.Millisecond,
 				Max:    time.Duration(ct.BackoffMax) * time.Millisecond,
 				Factor: ct.BackoffFactor,
@@ -77,7 +76,7 @@ func Start(c config.Config) {
 
 		for i := 0; i < ct.Workers; i++ {
 			waitGroup.Add(1)
-			go taskWorker(ct)
+			go taskWorker(ct, eb)
 		}
 	}
 
@@ -208,7 +207,7 @@ func queueWorker() {
 	waitGroup.Done()
 }
 
-func taskWorker(ct config.Task) {
+func taskWorker(ct config.Task, errorBackoff *backoff.Backoff) {
 	for task := range workerChan[ct.Type] {
 		output.Debug("Executing task type", ct.Type, "with arguments", task.Args)
 		stats.IncrTaskCount(ct.Type)
@@ -225,11 +224,11 @@ func taskWorker(ct config.Task) {
 			output.NotifyError(msg)
 		}
 
-		if errorBackoff[ct.Type] != nil {
+		if errorBackoff != nil {
 			if err == nil {
-				errorBackoff[ct.Type].Reset()
+				errorBackoff.Reset()
 			} else {
-				time.Sleep(errorBackoff[ct.Type].Duration())
+				errorBackoff.Duration()
 			}
 		}
 
