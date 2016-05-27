@@ -9,12 +9,18 @@ import (
 	"time"
 )
 
+const (
+	incrBuffer = 10000
+)
+
 var (
 	// GordonVersion contains the current version of gordon
 	GordonVersion = ""
 
-	runtimeStart int64
-	taskCount    map[string]int64
+	runtimeStart = getNowUnix()
+	taskCount    = make(map[string]int64)
+	incrChan     = make(chan string, incrBuffer)
+	getStatsChan = make(chan chan statsResponse)
 )
 
 // statsResponse is the response that will be returned from the HTTP-server,
@@ -26,8 +32,22 @@ type statsResponse struct {
 }
 
 func init() {
-	runtimeStart = getNowUnix()
-	taskCount = make(map[string]int64)
+	go updateCount()
+}
+
+func updateCount() {
+	for {
+		select {
+		case taskType := <-incrChan:
+			taskCount[taskType]++
+		case response := <-getStatsChan:
+			response <- statsResponse{
+				Runtime:   getRuntime(),
+				TaskCount: taskCount,
+				Version:   GordonVersion,
+			}
+		}
+	}
 }
 
 // InitTask initialises the task-counter for the defined task-type.
@@ -46,7 +66,7 @@ func InitTasks(tasks map[string]config.Task) {
 
 // IncrTaskCount increments the counter of the defined task-type.
 func IncrTaskCount(task string) {
-	taskCount[task]++
+	incrChan <- task
 }
 
 // Serve handles spawning an appropriate HTTP/HTTPS-server
@@ -79,11 +99,9 @@ func httpHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func getStats() statsResponse {
-	return statsResponse{
-		Runtime:   getRuntime(),
-		TaskCount: taskCount,
-		Version:   GordonVersion,
-	}
+	request := make(chan statsResponse)
+	getStatsChan <- request
+	return <-request
 }
 
 func getRuntime() int64 {

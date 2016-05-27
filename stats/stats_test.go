@@ -23,7 +23,7 @@ func TestStats(t *testing.T) {
 		t.FailNow()
 	}
 
-	sr := getStats()
+	sr := getStatsDelayed()
 	if len(sr.TaskCount) != 0 {
 		t.Log("The initial TaskCount length should be 0")
 		t.Fail()
@@ -34,7 +34,7 @@ func TestStats(t *testing.T) {
 		Type: testTaskType,
 	}
 	InitTasks(tasks)
-	sr = getStats()
+	sr = getStatsDelayed()
 	if len(sr.TaskCount) != 1 {
 		t.Log("After initializing one task TaskCount length should be 1")
 		t.Fail()
@@ -45,9 +45,16 @@ func TestStats(t *testing.T) {
 	}
 
 	IncrTaskCount(testTaskType)
-	sr = getStats()
+	sr = getStatsDelayed()
 	if sr.TaskCount[testTaskType] != 1 {
 		t.Log("The task-count after incrementing should be 1")
+		t.Fail()
+	}
+
+	IncrTaskCount(testTaskType)
+	sr = getStats()
+	if sr.TaskCount[testTaskType] < 1 {
+		t.Log("The task-count after incrementing should be at least 1")
 		t.Fail()
 	}
 
@@ -57,6 +64,11 @@ func TestStats(t *testing.T) {
 		t.Log("statsResponse.Runtime should be greater than 1, after waiting 1 second")
 		t.Fail()
 	}
+}
+
+func getStatsDelayed() statsResponse {
+	time.Sleep(50 * time.Millisecond)
+	return getStats()
 }
 
 func TestStatsHttp(t *testing.T) {
@@ -72,7 +84,7 @@ func TestStatsHttp(t *testing.T) {
 	InitTask(testTaskType)
 	IncrTaskCount(testTaskType)
 
-	sr := getStats()
+	sr := getStatsDelayed()
 
 	url := "http://" + iface + pattern
 	resp, err := http.Get(url)
