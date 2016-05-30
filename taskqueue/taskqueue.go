@@ -28,7 +28,6 @@ var (
 	errorNoNewTasksAccepted = fmt.Errorf("No new tasks accepted")
 
 	conf            config.Config
-	shutdown        bool
 	shutdownChan    chan bool
 	waitGroup       sync.WaitGroup
 	waitGroupFailed sync.WaitGroup
@@ -90,11 +89,11 @@ func Start(c config.Config) {
 // Stop will cause the taskqueue to stop accepting new tasks and shutdown the
 // worker routines after they've finished their current tasks
 func Stop() {
-	if shutdown {
+	if isShuttingDown() {
 		return
 	}
 
-	shutdown = true
+	setShutdown()
 	shutdownChan <- true
 
 	for taskType := range workerChan {
@@ -120,18 +119,18 @@ func queueWorker() {
 	}
 
 	runIntervalLoop := make(chan bool)
-	var runningIntervalLoop sync.WaitGroup
+	doneIntervalLoop := make(chan bool)
+
 	go func() {
 		for {
-			runningIntervalLoop.Wait()
+			<-doneIntervalLoop
 			time.Sleep(interval.Duration())
 
-			if shutdown {
+			if isShuttingDown() {
 				break
 			}
 
 			runIntervalLoop <- true
-			runningIntervalLoop.Add(1)
 		}
 	}()
 
@@ -144,9 +143,11 @@ func queueWorker() {
 		}
 	}()
 
+	doneIntervalLoop <- true
+
 	for <-runIntervalLoop {
 		for taskType, configTask := range conf.Tasks {
-			if shutdown {
+			if isShuttingDown() {
 				break
 			}
 
@@ -200,7 +201,7 @@ func queueWorker() {
 			}
 		}
 
-		runningIntervalLoop.Done()
+		doneIntervalLoop <- true
 	}
 
 	Stop()
@@ -281,9 +282,26 @@ func failedTaskWorker() {
 }
 
 func acceptsTasks(taskType string) bool {
-	if shutdown {
+	if isShuttingDown() {
 		return false
 	}
 
 	return len(workerChan[taskType]) < backlog
+}
+
+var (
+	shutdownLock sync.RWMutex
+	shutdown     = false
+)
+
+func isShuttingDown() bool {
+	shutdownLock.RLock()
+	defer shutdownLock.RUnlock()
+	return shutdown
+}
+
+func setShutdown() {
+	shutdownLock.Lock()
+	shutdown = true
+	shutdownLock.Unlock()
 }
