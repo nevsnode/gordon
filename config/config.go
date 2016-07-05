@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 )
 
+// DefaultConfig describes the default path to the configuration file.
+const DefaultConfig = "./gordon.config.toml"
+
 // A Config stores values, necessary for the execution of Gordon.
 type Config struct {
 	RedisNetwork   string          `toml:"redis_network"`    // network type used for the connection to Redis

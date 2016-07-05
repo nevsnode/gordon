@@ -14,12 +14,8 @@ import (
 	"syscall"
 )
 
-const (
-	// GordonVersion is the current version of Gordon
-	GordonVersion = "1.5"
-
-	defaultConfig = "./gordon.config.toml"
-)
+// GordonVersion is the current version of Gordon
+const GordonVersion = "1.5"
 
 var cli struct {
 	config  string
@@ -45,7 +41,7 @@ func main() {
 
 	// When no configuration file was passed as a flag, use the default location.
 	if cli.config == "" {
-		cli.config = utils.Basepath(defaultConfig)
+		cli.config = utils.Basepath(config.DefaultConfig)
 	}
 
 	conf, err := config.New(cli.config)
