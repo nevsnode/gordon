@@ -15,7 +15,7 @@ import (
 )
 
 // GordonVersion is the current version of Gordon
-const GordonVersion = "1.5"
+const GordonVersion = "1.5.1"
 
 var cli struct {
 	config  string

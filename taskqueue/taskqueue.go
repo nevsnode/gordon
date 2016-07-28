@@ -32,7 +32,6 @@ var (
 	waitGroup       sync.WaitGroup
 	waitGroupFailed sync.WaitGroup
 	redisPool       *pool.Pool
-	workerChan      map[string]chan QueueTask
 	failedChan      chan failedTask
 )
 
@@ -56,7 +55,6 @@ func Start(c config.Config) {
 
 	stats.InitTasks(conf.Tasks)
 
-	workerChan = make(map[string]chan QueueTask)
 	failedChan = make(chan failedTask)
 	shutdownChan = make(chan bool, 1)
 
@@ -71,7 +69,7 @@ func Start(c config.Config) {
 			}
 		}
 
-		workerChan[ct.Type] = make(chan QueueTask, backlog)
+		createWorkerChan(ct.Type)
 
 		for i := 0; i < ct.Workers; i++ {
 			waitGroup.Add(1)
@@ -96,9 +94,7 @@ func Stop() {
 	setShutdown()
 	shutdownChan <- true
 
-	for taskType := range workerChan {
-		close(workerChan[taskType])
-	}
+	closeWorkerChans()
 }
 
 // Wait waits, to keep the application running as long as there are workers
@@ -194,7 +190,7 @@ func queueWorker() {
 					continue
 				}
 
-				workerChan[taskType] <- task
+				sendWorkerTask(taskType, task)
 
 				// we've actually are handling new tasks so reset the interval
 				interval.Reset()
@@ -209,7 +205,8 @@ func queueWorker() {
 }
 
 func taskWorker(ct config.Task, errorBackoff *backoff.Backoff) {
-	for task := range workerChan[ct.Type] {
+	wc := getWorkerChan(ct.Type)
+	for task := range wc {
 		output.Debug("Executing task type", ct.Type, "with arguments", task.Args)
 		stats.IncrTaskCount(ct.Type)
 
@@ -286,7 +283,7 @@ func acceptsTasks(taskType string) bool {
 		return false
 	}
 
-	return len(workerChan[taskType]) < backlog
+	return len(getWorkerChan(taskType)) < backlog
 }
 
 var (
@@ -304,4 +301,43 @@ func setShutdown() {
 	shutdownLock.Lock()
 	shutdown = true
 	shutdownLock.Unlock()
+}
+
+var (
+	workerChanLock sync.Mutex
+	workerChan     map[string]chan QueueTask
+)
+
+func createWorkerChan(taskType string) {
+	workerChanLock.Lock()
+	defer workerChanLock.Unlock()
+
+	if workerChan == nil {
+		workerChan = make(map[string]chan QueueTask)
+	}
+
+	workerChan[taskType] = make(chan QueueTask, backlog)
+}
+
+func getWorkerChan(taskType string) chan QueueTask {
+	workerChanLock.Lock()
+	defer workerChanLock.Unlock()
+
+	return workerChan[taskType]
+}
+
+func sendWorkerTask(taskType string, task QueueTask) {
+	workerChanLock.Lock()
+	defer workerChanLock.Unlock()
+
+	workerChan[taskType] <- task
+}
+
+func closeWorkerChans() {
+	workerChanLock.Lock()
+	defer workerChanLock.Unlock()
+
+	for taskType := range workerChan {
+		close(workerChan[taskType])
+	}
 }
