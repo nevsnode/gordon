@@ -23,6 +23,7 @@ go get -u github.com/nevsnode/gordon
 go get -u github.com/mediocregopher/radix.v2
 go get -u github.com/BurntSushi/toml
 go get -u github.com/jpillora/backoff
+go get -u github.com/newrelic/go-agent
 
 # build the binary
 go build github.com/nevsnode/gordon

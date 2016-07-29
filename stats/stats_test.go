@@ -44,14 +44,14 @@ func TestStats(t *testing.T) {
 		t.Fail()
 	}
 
-	IncrTaskCount(testTaskType)
+	StartedTask(testTaskType)
 	sr = getStatsDelayed()
 	if sr.TaskCount[testTaskType] != 1 {
 		t.Log("The task-count after incrementing should be 1")
 		t.Fail()
 	}
 
-	IncrTaskCount(testTaskType)
+	StartedTask(testTaskType)
 	sr = getStats()
 	if sr.TaskCount[testTaskType] < 1 {
 		t.Log("The task-count after incrementing should be at least 1")
@@ -78,11 +78,11 @@ func TestStatsHttp(t *testing.T) {
 		Interface: iface,
 		Pattern:   pattern,
 	}
-	go Serve(c)
+	go serve(c)
 	time.Sleep(1 * time.Second)
 
 	InitTask(testTaskType)
-	IncrTaskCount(testTaskType)
+	StartedTask(testTaskType)
 
 	sr := getStatsDelayed()
 

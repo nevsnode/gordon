@@ -32,10 +32,11 @@ type Config struct {
 
 // StatsConfig contains configuration options for the stats-package/service.
 type StatsConfig struct {
-	Interface   string // the interface where statistics from Gordon can be gathered from
-	Pattern     string // the pattern where the http-server will respond on
-	TLSCertFile string `toml:"tls_cert_file"` // the certificate file used, to serve the statistics over https
-	TLSKeyFile  string `toml:"tls_key_file"`  // the private key file used, to serve the statistics over https
+	Interface   string         // the interface where statistics from Gordon can be gathered from
+	Pattern     string         // the pattern where the http-server will respond on
+	TLSCertFile string         `toml:"tls_cert_file"` // the certificate file used, to serve the statistics over https
+	TLSKeyFile  string         `toml:"tls_key_file"`  // the private key file used, to serve the statistics over https
+	NewRelic    NewRelicConfig // options for newrelic agent
 }
 
 // A Task stores information that task-workers need to execute their script/application.
@@ -48,6 +49,13 @@ type Task struct {
 	BackoffMin     int     `toml:"backoff_min"`      // task specific error-backoff start value in milliseconds
 	BackoffMax     int     `toml:"backoff_max"`      // task specific error-backoff maximum value in milliseconds
 	BackoffFactor  float64 `toml:"backoff_factor"`   // task specific error-backoff multiplicator
+}
+
+// NewRelicConfig stores information for the agent.
+type NewRelicConfig struct {
+	License   string // the newrelic license key
+	BetaToken string `toml:"beta_token"` // the newrelic beta-token (currently the go-agent is only available as a beta)
+	AppName   string `toml:"app_name"`   // the newrelic app-name
 }
 
 // New reads the provided file and returns a Config instance with the values from it.
@@ -64,7 +72,7 @@ func New(path string) (c Config, err error) {
 	}
 
 	// take care of default-value
-	if c.RedisNetwork != "tcp" || c.RedisNetwork != "udp" {
+	if c.RedisNetwork != "tcp" && c.RedisNetwork != "udp" {
 		c.RedisNetwork = "tcp"
 	}
 

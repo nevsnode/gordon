@@ -73,20 +73,8 @@ func main() {
 		}
 	}
 
+	stats.Init(conf.Stats)
 	taskqueue.Start(conf)
-
-	// If the StatsInterface was set, start the HTTP-server for it.
-	if conf.Stats.Interface != "" {
-		if conf.Stats.Pattern == "" {
-			conf.Stats.Pattern = "/"
-		}
-
-		go func() {
-			if err := stats.Serve(conf.Stats); err != nil {
-				output.NotifyError("stats.Serve():", err)
-			}
-		}()
-	}
 
 	// Start another go-routine to initiate the graceful shutdown of all taskqueue-workers,
 	// when the application shall be terminated.

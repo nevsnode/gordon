@@ -71,6 +71,14 @@ pattern = "/"
 # tls_cert_file = "/etc/ssl/private/certificate.crt"
 # tls_key_file = "/etc/ssl/private/private.key"
 
+# NewRelic agent related settings
+# As this is currently in beta-state, you'll need to request a beta-token on their website.
+# (uncomment and define those values accordingly to enable it)
+#[stats.newrelic]
+#license = "8fb744b51a1f14e5e8cda4e4aec68e2f"
+#beta_token = "8fb744b51a1f14e5e8cda4e4aec68e2f"
+#app_name = "Gordon Taskqueue"
+
 # Task related tables
 [tasks]
 

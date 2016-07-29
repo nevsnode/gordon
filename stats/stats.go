@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/nevsnode/gordon/config"
+	"github.com/nevsnode/gordon/output"
+	"github.com/newrelic/go-agent"
 	"net/http"
 	"time"
 )
@@ -21,6 +23,7 @@ var (
 	taskCount    = make(map[string]int64)
 	incrChan     = make(chan string, incrBuffer)
 	getStatsChan = make(chan chan statsResponse)
+	newRelicApp  newrelic.Application
 )
 
 // statsResponse is the response that will be returned from the HTTP-server,
@@ -64,13 +67,46 @@ func InitTasks(tasks map[string]config.Task) {
 	}
 }
 
-// IncrTaskCount increments the counter of the defined task-type.
-func IncrTaskCount(task string) {
+// StartedTask handles stats when a task was started.
+func StartedTask(task string) newrelic.Transaction {
 	incrChan <- task
+
+	if newRelicApp != nil {
+		return newRelicApp.StartTransaction(task, nil, nil)
+	}
+
+	return nil
 }
 
-// Serve handles spawning an appropriate HTTP/HTTPS-server
-func Serve(c config.StatsConfig) error {
+// Init will initialize the stats-package to be able to record
+// statistics within the taskqueue application.
+func Init(c config.StatsConfig) {
+	if c.Interface != "" {
+		if c.Pattern == "" {
+			c.Pattern = "/"
+		}
+
+		go func() {
+			if err := serve(c); err != nil {
+				output.NotifyError("stats.serve():", err)
+			}
+		}()
+	}
+
+	if c.NewRelic.License != "" {
+		output.Debug("Starting NewRelic Agent")
+		nrc := newrelic.NewConfig(c.NewRelic.AppName, c.NewRelic.License)
+		nrc.BetaToken = c.NewRelic.BetaToken
+
+		var err error
+		newRelicApp, err = newrelic.NewApplication(nrc)
+		if err != nil {
+			output.NotifyError("newrelic.NewApplication():", err)
+		}
+	}
+}
+
+func serve(c config.StatsConfig) error {
 	if c.TLSCertFile != "" && c.TLSKeyFile != "" {
 		return serveHTTPS(c.Interface, c.Pattern, c.TLSCertFile, c.TLSKeyFile)
 	}
