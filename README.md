@@ -19,12 +19,17 @@ Getting Started
 # get/update the code
 go get -u github.com/nevsnode/gordon
 
+# get/update necessary libraries
+go get -u github.com/mediocregopher/radix.v2
+go get -u github.com/BurntSushi/toml
+go get -u github.com/jpillora/backoff
+
 # build the binary
 go build github.com/nevsnode/gordon
 ```
 
 Then create a configuration file. You'll probably just want to copy the example file and name it `gordon.config.toml`.
-Change the fields in the file accordingly and deploy it in the same directory as the generated binary.  
+Change the fields in the file accordingly and deploy it in the same directory as the generated binary.
 
 2. Run
 ---
@@ -147,17 +152,6 @@ Libraries
 * [Gordon PHP](https://github.com/nevsnode/gordon-php), Example library written in PHP
 
 As Gordon just reads and inserts to Redis, you can also just use the commonly used libraries for your programming language.
-
-
-Development
-===
-
-Updating the vendored libraries:
-```sh
-git subtree pull --squash --prefix=vendor/github.com/mediocregopher/radix.v2 https://github.com/mediocregopher/radix.v2 master
-git subtree pull --squash --prefix=vendor/github.com/BurntSushi/toml https://github.com/BurntSushi/toml master
-git subtree pull --squash --prefix=vendor/github.com/jpillora/backoff https://github.com/jpillora/backoff master
-```
 
 
 Credits
