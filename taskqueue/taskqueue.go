@@ -212,12 +212,10 @@ func taskWorker(ct config.Task, errorBackoff *backoff.Backoff) {
 
 		err := task.Execute(ct.Script)
 
-		if txn != nil {
-			if err != nil {
-				txn.NoticeError(err)
-			}
-			txn.End()
+		if err != nil {
+			txn.NoticeError(err)
 		}
+		txn.End()
 
 		if err != nil {
 			task.ErrorMessage = fmt.Sprintf("%s", err)

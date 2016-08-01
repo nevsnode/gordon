@@ -68,14 +68,9 @@ func InitTasks(tasks map[string]config.Task) {
 }
 
 // StartedTask handles stats when a task was started.
-func StartedTask(task string) newrelic.Transaction {
+func StartedTask(task string) Transaction {
 	incrChan <- task
-
-	if newRelicApp != nil {
-		return newRelicApp.StartTransaction(task, nil, nil)
-	}
-
-	return nil
+	return NewTransaction(task)
 }
 
 // Init will initialize the stats-package to be able to record
@@ -146,4 +141,37 @@ func getRuntime() int64 {
 
 func getNowUnix() int64 {
 	return time.Now().Unix()
+}
+
+// NewTransaction creates and returns a new transaction instance.
+func NewTransaction(name string) (t Transaction) {
+	if newRelicApp != nil {
+		t.nrTxn = newRelicApp.StartTransaction(name, nil, nil)
+	}
+
+	return
+}
+
+// A Transaction allows tracking executions of tasks.
+type Transaction struct {
+	nrTxn newrelic.Transaction
+}
+
+// End will mark the end of the execution of a task.
+func (t Transaction) End() {
+	if t.nrTxn == nil {
+		return
+	}
+
+	t.nrTxn.End()
+}
+
+// NoticeError will mark the transaction as erroneous and will add the provided error
+// to the transaction information.
+func (t Transaction) NoticeError(err error) {
+	if t.nrTxn == nil {
+		return
+	}
+
+	t.nrTxn.NoticeError(err)
 }
