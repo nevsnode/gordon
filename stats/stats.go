@@ -91,7 +91,6 @@ func Init(c config.StatsConfig) {
 	if c.NewRelic.License != "" {
 		output.Debug("Starting NewRelic Agent")
 		nrc := newrelic.NewConfig(c.NewRelic.AppName, c.NewRelic.License)
-		nrc.BetaToken = c.NewRelic.BetaToken
 
 		var err error
 		newRelicApp, err = newrelic.NewApplication(nrc)

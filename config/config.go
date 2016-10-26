@@ -53,9 +53,8 @@ type Task struct {
 
 // NewRelicConfig stores information for the agent.
 type NewRelicConfig struct {
-	License   string // the newrelic license key
-	BetaToken string `toml:"beta_token"` // the newrelic beta-token (currently the go-agent is only available as a beta)
-	AppName   string `toml:"app_name"`   // the newrelic app-name
+	License string // the newrelic license key
+	AppName string `toml:"app_name"` // the newrelic app-name
 }
 
 // New reads the provided file and returns a Config instance with the values from it.
