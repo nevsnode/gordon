@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jpillora/backoff"
 	"github.com/mediocregopher/radix.v2/pool"
+	"github.com/mediocregopher/radix.v2/redis"
 	"github.com/nevsnode/gordon/config"
 	"github.com/nevsnode/gordon/output"
 	"github.com/nevsnode/gordon/stats"
@@ -39,18 +40,10 @@ var (
 func Start(c config.Config) {
 	conf = c
 
-	poolSize := 1
-	for _, ct := range conf.Tasks {
-		if ct.FailedTasksTTL > 0 {
-			poolSize++
-			break
-		}
-	}
-
 	var err error
-	redisPool, err = pool.New(conf.RedisNetwork, conf.RedisAddress, poolSize)
+	redisPool, err = pool.NewCustom(conf.RedisNetwork, conf.RedisAddress, 0, redisDialFunction)
 	if err != nil {
-		output.NotifyError("redis pool.New():", err)
+		output.NotifyError("redis pool.NewCustom():", err)
 	}
 
 	stats.InitTasks(conf.Tasks)
@@ -290,6 +283,10 @@ func acceptsTasks(taskType string) bool {
 	}
 
 	return len(getWorkerChan(taskType)) < backlog
+}
+
+func redisDialFunction(network, addr string) (*redis.Client, error) {
+	return redis.DialTimeout(network, addr, time.Duration(10)*time.Second)
 }
 
 var (
