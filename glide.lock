@@ -1,0 +1,21 @@
+hash: d40dba32d881e5da3f169689757f75ef4c2ff568f9bcf0fe8c8f296c9d9114d5
+updated: 2017-06-30T14:46:40.132604761+02:00
+imports:
+- name: github.com/BurntSushi/toml
+  version: b26d9c308763d68093482582cea63d69be07a0f0
+- name: github.com/jpillora/backoff
+  version: 06c7a16c845dc8e0bf575fafeeca0f5462f5eb4d
+- name: github.com/mediocregopher/radix.v2
+  version: dbcfd490034f823788edc555737247e9ba628b6c
+  subpackages:
+  - pool
+  - redis
+- name: github.com/newrelic/go-agent
+  version: 29ec3cd1bb2f21d21d36da37dae52695cb2c3a17
+  subpackages:
+  - internal
+  - internal/jsonx
+  - internal/logger
+  - internal/sysinfo
+  - internal/utilization
+testImports: []

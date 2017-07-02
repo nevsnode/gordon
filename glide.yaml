@@ -1,0 +1,11 @@
+package: github.com/nevsnode/gordon
+import:
+- package: github.com/BurntSushi/toml
+  version: ^0.2.0
+- package: github.com/jpillora/backoff
+- package: github.com/mediocregopher/radix.v2
+  subpackages:
+  - pool
+  - redis
+- package: github.com/newrelic/go-agent
+  version: ^1.5.0
