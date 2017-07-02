@@ -18,9 +18,9 @@ func init() {
 // Basepath returns an absolute path to the given file.
 // If the given file is relative the current absolute path will be prepended.
 func Basepath(file string) string {
-	if filepath.IsAbs(file) || root == "" {
-		return file
+	if root != "" && !filepath.IsAbs(file) {
+		file = root + "/" + file
 	}
 
-	return filepath.Clean(root + "/" + file)
+	return filepath.Clean(file)
 }
