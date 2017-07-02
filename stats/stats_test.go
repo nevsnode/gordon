@@ -73,27 +73,25 @@ func getStatsDelayed() statsResponse {
 
 func TestStatsHttp(t *testing.T) {
 	iface := "127.0.0.1:3333"
-	pattern := "/testpattern"
 	c := config.StatsConfig{
 		Interface: iface,
-		Pattern:   pattern,
 	}
 	go serve(c)
 	time.Sleep(1 * time.Second)
 
-	InitTask(testTaskType)
+	taskCounter.Init(testTaskType)
 	StartedTask(testTaskType)
 
 	sr := getStatsDelayed()
 
-	url := "http://" + iface + pattern
+	url := "http://" + iface
 	resp, err := http.Get(url)
-	defer resp.Body.Close()
 	if err != nil {
 		t.Log("http.Get should not return an error")
 		t.Log("err: ", err)
 		t.FailNow()
 	}
+	defer resp.Body.Close()
 
 	sr2 := statsResponse{}
 	parser := json.NewDecoder(resp.Body)
@@ -105,18 +103,6 @@ func TestStatsHttp(t *testing.T) {
 	}
 	if !reflect.DeepEqual(sr, sr2) {
 		t.Log("getStats() should return the same value as the parsed http-response")
-		t.Fail()
-	}
-
-	url = "http://" + iface + "/doesnotexist"
-	resp, err = http.Get(url)
-	if err != nil {
-		t.Log("http.Get should not return an error")
-		t.Log("err: ", err)
-		t.FailNow()
-	}
-	if resp.StatusCode != 404 {
-		t.Log("The HTTP status-code for an invalid path should be 404")
 		t.Fail()
 	}
 }

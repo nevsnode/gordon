@@ -32,11 +32,8 @@ type Config struct {
 
 // StatsConfig contains configuration options for the stats-package/service.
 type StatsConfig struct {
-	Interface   string         // the interface where statistics from Gordon can be gathered from
-	Pattern     string         // the pattern where the http-server will respond on
-	TLSCertFile string         `toml:"tls_cert_file"` // the certificate file used, to serve the statistics over https
-	TLSKeyFile  string         `toml:"tls_key_file"`  // the private key file used, to serve the statistics over https
-	NewRelic    NewRelicConfig // options for newrelic agent
+	Interface string         // the interface where statistics from Gordon can be gathered from
+	NewRelic  NewRelicConfig // options for newrelic agent
 }
 
 // A Task stores information that task-workers need to execute their script/application.
