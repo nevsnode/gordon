@@ -18,21 +18,37 @@ import (
 const GordonVersion = "1.5.1"
 
 var cli struct {
-	config  string
-	test    bool
-	verbose bool
-	version bool
+	config      string
+	configLong  string
+	test        bool
+	testLong    bool
+	verbose     bool
+	verboseLong bool
+	version     bool
 }
 
 func init() {
 	flag.StringVar(&cli.config, "c", "", "path to config file")
+	flag.StringVar(&cli.configLong, "conf", "", "path to config file")
 	flag.BoolVar(&cli.test, "t", false, "test configuration file")
+	flag.BoolVar(&cli.testLong, "test", false, "test configuration file")
 	flag.BoolVar(&cli.verbose, "v", false, "enable verbose/debugging output")
-	flag.BoolVar(&cli.version, "V", false, "show version")
+	flag.BoolVar(&cli.verboseLong, "verbose", false, "enable verbose/debugging output")
+	flag.BoolVar(&cli.version, "version", false, "show version")
 }
 
 func main() {
 	flag.Parse()
+
+	if cli.configLong != "" {
+		cli.config = cli.configLong
+	}
+	if cli.testLong {
+		cli.test = true
+	}
+	if cli.verboseLong {
+		cli.verbose = true
+	}
 
 	if cli.version == true {
 		fmt.Printf("Gordon version %s\n", GordonVersion)
@@ -73,7 +89,7 @@ func main() {
 		}
 	}
 
-	stats.Init(conf.Stats)
+	stats.Setup(conf.Stats)
 	taskqueue.Start(conf)
 
 	// Start another go-routine to initiate the graceful shutdown of all taskqueue-workers,
