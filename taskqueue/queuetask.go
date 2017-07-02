@@ -5,6 +5,7 @@ package taskqueue
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -12,13 +13,20 @@ import (
 
 // A QueueTask is the task as it is enqueued in a Redis-list.
 type QueueTask struct {
-	Args         []string `json:"args"`          // list of arguments passed to the defined script/application
-	ErrorMessage string   `json:"error_message"` // error message that might be created on executing the task
+	Args         []string          `json:"args"`          // list of arguments passed to script/application as argument in the given order
+	Env          map[string]string `json:"env"`           // map containing environment variables passed to script/application
+	ErrorMessage string            `json:"error_message"` // error message that might be created on executing the task
 }
 
 // Execute executes the passed script/application with the arguments from the QueueTask object.
 func (q QueueTask) Execute(script string) error {
 	cmd := exec.Command(script, q.Args...)
+
+	// add possible environment variables
+	cmd.Env = os.Environ()
+	for envKey, envVal := range q.Env {
+		cmd.Env = append(cmd.Env, envKey+"="+envVal)
+	}
 
 	// set Setpgid to true, to execute command in different process group,
 	// so it won't receive the interrupt-signals sent to the main go-application
@@ -35,6 +43,13 @@ func (q QueueTask) Execute(script string) error {
 
 // GetJSONString returns the QueueTask object as a json-encoded string
 func (q QueueTask) GetJSONString() (value string, err error) {
+	if q.Args == nil {
+		q.Args = make([]string, 0)
+	}
+	if q.Env == nil {
+		q.Env = make(map[string]string)
+	}
+
 	b, err := json.Marshal(q)
 	value = fmt.Sprintf("%s", b)
 	return
