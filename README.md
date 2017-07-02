@@ -9,11 +9,9 @@ Gordon provides functionality to execute tasks in the background of your main ap
 As Gordon just executes commands, you can use any kind of script or application, as long as it runs on the command-line.
 
 
-Getting Started
-===
+## Getting Started
 
-1. Build
----
+#### 1. Build
 
 ```sh
 # get/update the code
@@ -26,8 +24,7 @@ go build github.com/nevsnode/gordon
 Then create a configuration file. You'll probably just want to copy the example file and name it `gordon.config.toml`.
 Change the fields in the file accordingly and deploy it in the same directory as the generated binary.
 
-2. Run
----
+#### 2. Run
 
 Now you can start the Gordon application. It accepts the following flags (all are optional):
 
@@ -40,22 +37,19 @@ version|bool|Show version
 
 Example:
 ```sh
-./gordon -c /path/to/gordon.config.toml -v
+./gordon -conf /path/to/gordon.config.toml -verbose
 ```
 
-3. Integrate
----
+#### 3. Integrate
 
 The last step is to integrate Gordon so that commands can be executed.
 
 This is achieved by inserting entries into Redis-lists. Take a look at the section [Handling Tasks](#handling-tasks) for a brief explanation.
 
 
-Handling Tasks
-===
+## Handling Tasks
 
-Creating Tasks
----
+#### Creating Tasks
 
 Gordon essentially works by checking for entries in specific Redis-lists.
 
@@ -108,8 +102,7 @@ The task above would therefore be executed like this:
 foo=bar /path/to/do_something.sh "param1" "param2"
 ```
 
-Failed Tasks
----
+## Failed Tasks
 
 Tasks returning an exit-code other than 0 or creating output are considered to be failed.
 In some cases one might want to handle these tasks separately, for instance re-queuing them.
@@ -138,6 +131,7 @@ The values in this list are the same as the normal task entries, but also includ
         "param1",
         "param2"
     ],
+    "env": {},
     "error_message": "Some error happened!"
 }
 ```
@@ -145,18 +139,17 @@ The values in this list are the same as the normal task entries, but also includ
 You may then use [LINDEX](http://redis.io/commands/lindex) or [LPOP](http://redis.io/commands/lpop) to retrieve failed tasks from Redis and handle them.
 
 
-Libraries
-===
+## Libraries
 
 * [Gordon PHP](https://github.com/nevsnode/gordon-php), Example library written in PHP
 
 As Gordon just reads and inserts to Redis, you can also just use the commonly used libraries for your programming language.
 
 
-Credits
-===
+## Credits
 
 Kudos to the following libraries which are used by gordon:
 * [mediocregopher/radix.v2](https://github.com/mediocregopher/radix.v2)
 * [BurntSushi/toml](https://github.com/BurntSushi/toml)
 * [jpillora/backoff](https://github.com/jpillora/backoff)
+* [newrelic/go-agent](https://github.com/newrelic/go-agent)
