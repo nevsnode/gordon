@@ -5,9 +5,6 @@
 # Redis server address
 redis_address = "127.0.0.1:6379"
 
-# Redis network-type (default is "tcp")
-# redis_network = "tcp"
-
 # Queue key, which is basically a prefix for all used redis-keys.
 queue_key = "taskqueue"
 
@@ -62,14 +59,6 @@ backoff_factor = 2.0
 # Interface where a webservice will listen on.
 # If commented or an empty string, no webservice will be created.
 # interface = "127.0.0.1:8080"
-
-# Url pattern where the statistics-webservice will respond to
-pattern = "/"
-
-# Certificate settings for the statistics-webservice.
-# If these are defined https will be used, otherweise http.
-# tls_cert_file = "/etc/ssl/private/certificate.crt"
-# tls_key_file = "/etc/ssl/private/private.key"
 
 # NewRelic agent related settings
 # (uncomment and define those values accordingly to enable it)
