@@ -19,12 +19,6 @@ Getting Started
 # get/update the code
 go get -u github.com/nevsnode/gordon
 
-# get/update necessary libraries
-go get -u github.com/mediocregopher/radix.v2
-go get -u github.com/BurntSushi/toml
-go get -u github.com/jpillora/backoff
-go get -u github.com/newrelic/go-agent
-
 # build the binary
 go build github.com/nevsnode/gordon
 ```
@@ -39,10 +33,10 @@ Now you can start the Gordon application. It accepts the following flags (all ar
 
 Flag|Type|Description
 ----|----|-----------
-c|string|Path to the configuration file _(Overrides the default `./gordon.config.toml`)_
-t|bool|Test configuration
-V|bool|Show version
-v|bool|Enable verbose/debugging output
+c, conf|string|Path to the configuration file _(Overrides the default `./gordon.config.toml`)_
+t, test|bool|Test configuration
+v, verbose|bool|Enable verbose/debugging output
+version|bool|Show version
 
 Example:
 ```sh
@@ -79,14 +73,15 @@ By knowing the list-name, you are now able to trigger the execution of this task
 You only need to push a task-entry into this Redis-list by using [RPUSH](http://redis.io/commands/rpush).
 The command in Redis would then look like this:
 ```
-RPUSH myqueue:update_something '{"args":["1234"]}'
+RPUSH myqueue:update_something '{"args":["1234"],"env":{"foo":"bar"}}'
 ```
 
-This will initiate the execution of the configured `Script` for the task `update_something` with the first parameter beeing `1234`.
+This will initiate the execution of the configured `Script` for the task `update_something` with the first parameter beeing `1234`
+and the environment variable `foo=bar`.
 
-Assuming your task is configured with *script* `/path/to/do_something.sh`, Gordon will execute this:
+Assuming your task is configured with *script* `/path/to/do_something.sh`, Gordon will execute it like this:
 ```
-/path/to/do_something.sh 1234
+foo=bar /path/to/do_something.sh 1234
 ```
 
 **Structure of a task entry**
@@ -97,17 +92,20 @@ The values that are inserted to the Redis-lists have to be JSON-encoded strings,
     "args": [
         "param1",
         "param2"
-    ]
+    ],
+    "env": {
+        "foo": "bar"
+    }
 }
 ```
 
 They have to be an object with the property `args` that is an **array containing strings**.
-When no parameters are needed, just pass an empty array.
+Environment variables can also be passed with the property `env`.
 
 Arguments that are contained in `args`, will be passed to the *script* in the exact same order.
-The task above would therefor be executed like this:
+The task above would therefore be executed like this:
 ```
-/path/to/do_something.sh "param1" "param2"
+foo=bar /path/to/do_something.sh "param1" "param2"
 ```
 
 Failed Tasks
