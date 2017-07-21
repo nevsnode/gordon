@@ -29,7 +29,7 @@ func TestQueueTask(t *testing.T) {
 	}
 
 	jsonString, err := qt.GetJSONString()
-	jsonStringExpected := `{"args":["` + msg + `"],"env":{},"error_message":""}`
+	jsonStringExpected := `{"args":["` + msg + `"],"env":{}}`
 	if err != nil {
 		t.Log("QueueTask.GetJSONString() should not return an error")
 		t.Log("err: ", err)
@@ -53,7 +53,7 @@ func TestQueueTask(t *testing.T) {
 	}
 
 	jsonString, err = qt2.GetJSONString()
-	jsonStringExpected = `{"args":[],"env":{"TEST_ENV_VAR":"` + msg + `"},"error_message":""}`
+	jsonStringExpected = `{"args":[],"env":{"TEST_ENV_VAR":"` + msg + `"}}`
 	if err != nil {
 		t.Log("QueueTask.GetJSONString() should not return an error")
 		t.Log("err: ", err)

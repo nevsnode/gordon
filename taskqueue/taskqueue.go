@@ -10,13 +10,8 @@ import (
 	"github.com/nevsnode/gordon/config"
 	"github.com/nevsnode/gordon/output"
 	"github.com/nevsnode/gordon/stats"
-	"strings"
 	"sync"
 	"time"
-)
-
-const (
-	backlog = 1
 )
 
 type failedTask struct {
@@ -36,6 +31,11 @@ var (
 	failedChan      chan failedTask
 )
 
+func init() {
+	workerCount = make(map[string]int)
+	workerBackoff = make(map[string]*backoff.Backoff)
+}
+
 // Start initialises several variables and creates necessary go-routines
 func Start(c config.Config) {
 	conf = c
@@ -52,22 +52,7 @@ func Start(c config.Config) {
 	shutdownChan = make(chan bool, 1)
 
 	for _, ct := range conf.Tasks {
-		var eb *backoff.Backoff
-		if ct.BackoffEnabled {
-			eb = &backoff.Backoff{
-				Min:    time.Duration(ct.BackoffMin) * time.Millisecond,
-				Max:    time.Duration(ct.BackoffMax) * time.Millisecond,
-				Factor: ct.BackoffFactor,
-				Jitter: true,
-			}
-		}
-
-		createWorkerChan(ct.Type)
-
-		for i := 0; i < ct.Workers; i++ {
-			waitGroup.Add(1)
-			go taskWorker(ct, eb)
-		}
+		createWorkerCount(ct.Type)
 	}
 
 	waitGroupFailed.Add(1)
@@ -86,18 +71,16 @@ func Stop() {
 
 	setShutdown()
 	shutdownChan <- true
-
-	closeWorkerChans()
 }
 
 // Wait waits, to keep the application running as long as there are workers
 func Wait() {
 	waitGroup.Wait()
+	output.Debug("Finished task-workers")
 
 	close(failedChan)
 	waitGroupFailed.Wait()
-
-	redisPool.Empty()
+	output.Debug("Finished failed-task-worker")
 }
 
 func queueWorker() {
@@ -134,16 +117,17 @@ func queueWorker() {
 
 	doneIntervalLoop <- true
 
+intervalLoop:
 	for <-runIntervalLoop {
 		for taskType, configTask := range conf.Tasks {
 			if isShuttingDown() {
-				break
+				break intervalLoop
 			}
 
 			output.Debug("Checking for new tasks (" + taskType + ")")
 
 			// check if there are available workers
-			if !acceptsTasks(taskType) {
+			if !isWorkerAvailable(taskType) {
 				continue
 			}
 
@@ -165,7 +149,7 @@ func queueWorker() {
 			// iterate over all entries in redis, until no more are available,
 			// or all workers are busy, for a maximum of 2 * workers
 			for i := 0; i < (configTask.Workers * 2); i++ {
-				if !acceptsTasks(taskType) {
+				if !isWorkerAvailable(taskType) {
 					break
 				}
 
@@ -183,7 +167,9 @@ func queueWorker() {
 					continue
 				}
 
-				sendWorkerTask(taskType, task)
+				// spawn worker go-routine
+				waitGroup.Add(1)
+				go taskWorker(task, configTask)
 
 				// we've actually are handling new tasks so reset the interval
 				interval.Reset()
@@ -195,47 +181,55 @@ func queueWorker() {
 
 	Stop()
 	waitGroup.Done()
+	output.Debug("Finished queue-worker")
 }
 
-func taskWorker(ct config.Task, errorBackoff *backoff.Backoff) {
-	wc := getWorkerChan(ct.Type)
-	for task := range wc {
-		output.Debug("Executing task type", ct.Type, "with arguments", task.Args)
-		txn := stats.StartedTask(ct.Type)
+func taskWorker(task QueueTask, ct config.Task) {
+	defer func() {
+		returnWorker(ct.Type)
+		waitGroup.Done()
+	}()
 
-		err := task.Execute(ct.Script)
-
-		if err != nil {
-			txn.NoticeError(err)
-		}
-		txn.End()
-
-		if err != nil {
-			task.ErrorMessage = fmt.Sprintf("%s", err)
-			failedChan <- failedTask{
-				configTask: ct,
-				queueTask:  task,
-			}
-
-			msg := fmt.Sprintf("Failed executing task: %s \"%s\"\n%s", ct.Script, strings.Join(task.Args, "\" \""), err)
-			output.NotifyError(msg)
-		}
-
-		if errorBackoff != nil {
-			if err == nil {
-				errorBackoff.Reset()
-			} else {
-				errorBackoff.Duration()
-			}
-		}
-
-		output.Debug("Finished task type", ct.Type, "with arguments", task.Args)
+	var errorBackoff *backoff.Backoff
+	if ct.BackoffEnabled {
+		errorBackoff = getBackoff(ct.Type)
+	}
+	if errorBackoff != nil {
+		errorBackoff.Duration()
 	}
 
-	waitGroup.Done()
+	payload, _ := task.GetJSONString()
+	output.Debug("Executing task type", ct.Type, "- Payload:", payload)
+	txn := stats.StartedTask(ct.Type)
+
+	err := task.Execute(ct.Script)
+
+	if err != nil {
+		txn.NoticeError(err)
+	}
+	txn.End()
+
+	if err != nil {
+		task.ErrorMessage = fmt.Sprintf("%s", err)
+		failedChan <- failedTask{
+			configTask: ct,
+			queueTask:  task,
+		}
+
+		msg := fmt.Sprintf("Failed executing task for type \"%s\"\nPayload:\n%s\n\n%s", ct.Type, payload, err)
+		output.NotifyError(msg)
+	}
+
+	if errorBackoff != nil && err == nil {
+		errorBackoff.Reset()
+	}
+
+	output.Debug("Finished task type", ct.Type, "- Payload:", payload)
 }
 
 func failedTaskWorker() {
+	defer waitGroupFailed.Done()
+
 	for ft := range failedChan {
 		ct := ft.configTask
 		qt := ft.queueTask
@@ -273,16 +267,6 @@ func failedTaskWorker() {
 			return
 		}
 	}
-
-	waitGroupFailed.Done()
-}
-
-func acceptsTasks(taskType string) bool {
-	if isShuttingDown() {
-		return false
-	}
-
-	return len(getWorkerChan(taskType)) < backlog
 }
 
 func redisDialFunction(network, addr string) (*redis.Client, error) {
@@ -302,45 +286,68 @@ func isShuttingDown() bool {
 
 func setShutdown() {
 	shutdownLock.Lock()
+	defer shutdownLock.Unlock()
 	shutdown = true
-	shutdownLock.Unlock()
 }
 
 var (
-	workerChanLock sync.Mutex
-	workerChan     map[string]chan QueueTask
+	workerCount     map[string]int
+	workerCountLock sync.Mutex
 )
 
-func createWorkerChan(taskType string) {
-	workerChanLock.Lock()
-	defer workerChanLock.Unlock()
+func createWorkerCount(taskType string) {
+	workerCountLock.Lock()
+	defer workerCountLock.Unlock()
 
-	if workerChan == nil {
-		workerChan = make(map[string]chan QueueTask)
+	if workerCount == nil {
+		workerCount = make(map[string]int)
 	}
 
-	workerChan[taskType] = make(chan QueueTask, backlog)
+	workerCount[taskType] = 0
 }
 
-func getWorkerChan(taskType string) chan QueueTask {
-	workerChanLock.Lock()
-	defer workerChanLock.Unlock()
+func isWorkerAvailable(taskType string) bool {
+	workerCountLock.Lock()
+	defer workerCountLock.Unlock()
 
-	return workerChan[taskType]
+	currentCount := workerCount[taskType]
+	maxCount := conf.Tasks[taskType].Workers
+
+	return currentCount < maxCount
 }
 
-func sendWorkerTask(taskType string, task QueueTask) {
-	workerChanLock.Lock()
-	defer workerChanLock.Unlock()
+func claimWorker(taskType string) {
+	workerCountLock.Lock()
+	defer workerCountLock.Unlock()
 
-	workerChan[taskType] <- task
+	workerCount[taskType]++
 }
 
-func closeWorkerChans() {
-	workerChanLock.Lock()
-	defer workerChanLock.Unlock()
+func returnWorker(taskType string) {
+	workerCountLock.Lock()
+	defer workerCountLock.Unlock()
 
-	for taskType := range workerChan {
-		close(workerChan[taskType])
+	workerCount[taskType]--
+}
+
+var (
+	workerBackoff     map[string]*backoff.Backoff
+	workerBackoffLock sync.Mutex
+)
+
+func getBackoff(taskType string) *backoff.Backoff {
+	workerBackoffLock.Lock()
+	defer workerBackoffLock.Unlock()
+
+	if workerBackoff[taskType] == nil {
+		ct := conf.Tasks[taskType]
+		workerBackoff[taskType] = &backoff.Backoff{
+			Min:    time.Duration(ct.BackoffMin) * time.Millisecond,
+			Max:    time.Duration(ct.BackoffMax) * time.Millisecond,
+			Factor: ct.BackoffFactor,
+			Jitter: true,
+		}
 	}
+
+	return workerBackoff[taskType]
 }
