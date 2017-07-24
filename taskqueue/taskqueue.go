@@ -168,7 +168,7 @@ intervalLoop:
 				}
 
 				// spawn worker go-routine
-				waitGroup.Add(1)
+				claimWorker(taskType)
 				go taskWorker(task, configTask)
 
 				// we've actually are handling new tasks so reset the interval
@@ -185,10 +185,7 @@ intervalLoop:
 }
 
 func taskWorker(task QueueTask, ct config.Task) {
-	defer func() {
-		returnWorker(ct.Type)
-		waitGroup.Done()
-	}()
+	defer returnWorker(ct.Type)
 
 	var errorBackoff *backoff.Backoff
 	if ct.BackoffEnabled {
@@ -220,8 +217,8 @@ func taskWorker(task QueueTask, ct config.Task) {
 		output.NotifyError(msg)
 	}
 
-	if errorBackoff != nil && err == nil {
-		errorBackoff.Reset()
+	if err == nil {
+		resetBackoff(errorBackoff)
 	}
 
 	output.Debug("Finished task type", ct.Type, "- Payload:", payload)
@@ -299,10 +296,6 @@ func createWorkerCount(taskType string) {
 	workerCountLock.Lock()
 	defer workerCountLock.Unlock()
 
-	if workerCount == nil {
-		workerCount = make(map[string]int)
-	}
-
 	workerCount[taskType] = 0
 }
 
@@ -317,6 +310,8 @@ func isWorkerAvailable(taskType string) bool {
 }
 
 func claimWorker(taskType string) {
+	waitGroup.Add(1)
+
 	workerCountLock.Lock()
 	defer workerCountLock.Unlock()
 
@@ -328,6 +323,7 @@ func returnWorker(taskType string) {
 	defer workerCountLock.Unlock()
 
 	workerCount[taskType]--
+	waitGroup.Done()
 }
 
 var (
@@ -350,4 +346,15 @@ func getBackoff(taskType string) *backoff.Backoff {
 	}
 
 	return workerBackoff[taskType]
+}
+
+func resetBackoff(bkoff *backoff.Backoff) {
+	if bkoff == nil {
+		return
+	}
+
+	workerBackoffLock.Lock()
+	defer workerBackoffLock.Unlock()
+
+	bkoff.Reset()
 }
