@@ -232,13 +232,13 @@ func failedTaskWorker() {
 		qt := ft.queueTask
 
 		if ct.FailedTasksTTL == 0 {
-			return
+			continue
 		}
 
 		rc, err := redisPool.Get()
 		if err != nil {
 			output.NotifyError("redisPool.Get():", err)
-			return
+			continue
 		}
 		defer redisPool.Put(rc)
 
@@ -247,21 +247,21 @@ func failedTaskWorker() {
 		jsonString, err := qt.GetJSONString()
 		if err != nil {
 			output.NotifyError("failedTaskWorker(), qt.GetJSONString():", err)
-			return
+			continue
 		}
 
 		// add to list
 		reply := rc.Cmd("RPUSH", queueKey, jsonString)
 		if reply.Err != nil {
 			output.NotifyError("failedTaskWorker(), RPUSH:", reply.Err)
-			return
+			continue
 		}
 
 		// set expire
 		reply = rc.Cmd("EXPIRE", queueKey, ct.FailedTasksTTL)
 		if reply.Err != nil {
 			output.NotifyError("failedTaskWorker(), EXPIRE:", reply.Err)
-			return
+			continue
 		}
 	}
 }
