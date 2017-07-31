@@ -201,6 +201,10 @@ func taskWorker(task QueueTask, ct config.Task) {
 
 	err := task.Execute(ct.Script)
 
+	if err == nil {
+		resetBackoff(errorBackoff)
+	}
+
 	if err != nil {
 		txn.NoticeError(err)
 	}
@@ -215,10 +219,6 @@ func taskWorker(task QueueTask, ct config.Task) {
 
 		msg := fmt.Sprintf("Failed executing task for type \"%s\"\nPayload:\n%s\n\n%s", ct.Type, payload, err)
 		output.NotifyError(msg)
-	}
-
-	if err == nil {
-		resetBackoff(errorBackoff)
 	}
 
 	output.Debug("Finished task type", ct.Type, "- Payload:", payload)
