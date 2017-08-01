@@ -49,21 +49,21 @@ func TestOutput(t *testing.T) {
 	resetTestOutput()
 	SetDebug(true)
 	Debug(msg)
-	if testOutput != msg+"\n" {
+	if testOutput != prependDebug+" "+msg+"\n" {
 		t.Log("The debug-message should be printed when debug is true")
 		t.Fail()
 	}
 
 	resetTestOutput()
 	Debug("a", "b", 3)
-	if testOutput != "a b 3\n" {
+	if testOutput != prependDebug+" a b 3\n" {
 		t.Log("Debug() should accept multiple parameters of several types")
 		t.Fail()
 	}
 
 	resetTestOutput()
 	Debug("foo\nbar")
-	if testOutput != "foo\n\tbar\n" {
+	if testOutput != prependDebug+" foo\n\tbar\n" {
 		t.Log("Text over multiple lines should be indented with a tabulator")
 		t.Log("Output:", testOutput)
 		t.Fail()

@@ -20,6 +20,11 @@ type outputLogger interface {
 	Println(...interface{})
 }
 
+const (
+	prependDebug = "[DEBUG]"
+	prependError = "[ERROR]"
+)
+
 var (
 	debug       = false
 	errorScript = ""
@@ -47,8 +52,8 @@ func SetErrorScript(script string) {
 }
 
 // SetTempDir sets the directory used for temporary files.
-func SetTempDir(tempDir string) {
-	tempDir = tempDir
+func SetTempDir(t string) {
+	tempDir = t
 }
 
 // SetLogfile modifies the Output object to write messages to the given logfile instead of stdout.
@@ -71,7 +76,7 @@ func printLogger(msg ...interface{}) {
 // Debug writes a message to the current output, when debugging output is enabled.
 func Debug(msg ...interface{}) {
 	if debug {
-		printLogger(msg...)
+		printLogger(append([]interface{}{prependDebug}, msg...)...)
 	}
 }
 
@@ -84,7 +89,7 @@ func StopError(msg ...interface{}) {
 
 // NotifyError executes the notify-command with a given message.
 func NotifyError(msg ...interface{}) {
-	printLogger(msg...)
+	printLogger(append([]interface{}{prependError}, msg...)...)
 	notify(msg...)
 }
 
