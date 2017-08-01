@@ -17,9 +17,12 @@ import (
 // GordonVersion is the current version of Gordon
 const GordonVersion = "1.6.3"
 
+const cliDefaultLogfile = "-"
+
 var cli struct {
 	config      string
 	configLong  string
+	logfile     string
 	test        bool
 	testLong    bool
 	verbose     bool
@@ -30,6 +33,7 @@ var cli struct {
 func init() {
 	flag.StringVar(&cli.config, "c", "", "path to config file")
 	flag.StringVar(&cli.configLong, "conf", "", "path to config file")
+	flag.StringVar(&cli.logfile, "logfile", cliDefaultLogfile, "path to logfile (overwrites configuration)")
 	flag.BoolVar(&cli.test, "t", false, "test configuration file")
 	flag.BoolVar(&cli.testLong, "test", false, "test configuration file")
 	flag.BoolVar(&cli.verbose, "v", false, "enable verbose/debugging output")
@@ -74,6 +78,11 @@ func main() {
 
 	if err != nil {
 		log.Fatal("Configuration is invalid:", err)
+	}
+
+	// Overwrite logfile, if value is passed as a flag
+	if cli.logfile != cliDefaultLogfile {
+		conf.Logfile = cli.logfile
 	}
 
 	stats.GordonVersion = GordonVersion
