@@ -10,6 +10,7 @@ import (
 	"github.com/nevsnode/gordon/config"
 	"github.com/nevsnode/gordon/output"
 	"github.com/nevsnode/gordon/stats"
+	"math"
 	"sync"
 	"time"
 )
@@ -133,11 +134,11 @@ intervalLoop:
 
 			queueKey := conf.RedisQueueKey + ":" + taskType
 
-			llen, err := redisPool.Cmd("LLEN", queueKey).Int()
+			llen, err := redisPoolCmd(3, "LLEN", queueKey).Int()
 			if err != nil {
 				// Errors here are likely redis-connection errors, so we'll
 				// need to notify about it
-				output.NotifyError("redisPool.Cmd() Error:", err)
+				output.NotifyError("redisPoolCmd() Error:", err)
 				break
 			}
 
@@ -153,9 +154,9 @@ intervalLoop:
 					break
 				}
 
-				value, err := redisPool.Cmd("LPOP", queueKey).Str()
+				value, err := redisPoolCmd(1, "LPOP", queueKey).Str()
 				if err != nil {
-					// no more tasks found
+					// most likely no more tasks found
 					break
 				}
 
@@ -231,13 +232,6 @@ func failedTaskWorker() {
 			continue
 		}
 
-		rc, err := redisPool.Get()
-		if err != nil {
-			output.NotifyError("redisPool.Get():", err)
-			continue
-		}
-		defer redisPool.Put(rc)
-
 		queueKey := conf.RedisQueueKey + ":" + ct.Type + ":failed"
 
 		jsonString, err := qt.GetJSONString()
@@ -247,16 +241,16 @@ func failedTaskWorker() {
 		}
 
 		// add to list
-		reply := rc.Cmd("RPUSH", queueKey, jsonString)
+		reply := redisPoolCmd(3, "RPUSH", queueKey, jsonString)
 		if reply.Err != nil {
-			output.NotifyError("failedTaskWorker(), RPUSH:", reply.Err)
+			output.NotifyError("failedTaskWorker(), RPUSH:", reply.Err, "\nPayload:\n", jsonString)
 			continue
 		}
 
 		// set expire
-		reply = rc.Cmd("EXPIRE", queueKey, ct.FailedTasksTTL)
+		reply = redisPoolCmd(3, "EXPIRE", queueKey, ct.FailedTasksTTL)
 		if reply.Err != nil {
-			output.NotifyError("failedTaskWorker(), EXPIRE:", reply.Err)
+			output.NotifyError("failedTaskWorker(), EXPIRE:", reply.Err, "\nPayload:\n", jsonString)
 			continue
 		}
 	}
@@ -264,6 +258,32 @@ func failedTaskWorker() {
 
 func redisDialFunction(network, addr string) (*redis.Client, error) {
 	return redis.DialTimeout(network, addr, time.Duration(10)*time.Second)
+}
+
+func redisPoolCmd(retries int, cmd string, args ...interface{}) (resp *redis.Resp) {
+	cmdBackoff := backoff.Backoff{
+		Min:    time.Duration(250) * time.Millisecond,
+		Max:    time.Duration(2000) * time.Millisecond,
+		Factor: math.E,
+		Jitter: true,
+	}
+
+	i := 0
+	for i < retries {
+		resp = redisPool.Cmd(cmd, args...)
+		if resp.Err == nil {
+			break
+		}
+
+		output.Debug("redisPool.Cmd() Error:", resp.Err, "\nCommand:\n"+cmd, fmt.Sprint(args...))
+		i++
+
+		if i < retries {
+			time.Sleep(cmdBackoff.Duration())
+		}
+	}
+
+	return resp
 }
 
 var (
