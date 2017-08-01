@@ -187,12 +187,8 @@ intervalLoop:
 func taskWorker(task QueueTask, ct config.Task) {
 	defer returnWorker(ct.Type)
 
-	var errorBackoff *backoff.Backoff
 	if ct.BackoffEnabled {
-		errorBackoff = getBackoff(ct.Type)
-	}
-	if errorBackoff != nil {
-		errorBackoff.Duration()
+		doErrorBackoff(ct.Type)
 	}
 
 	payload, _ := task.GetJSONString()
@@ -201,14 +197,14 @@ func taskWorker(task QueueTask, ct config.Task) {
 
 	err := task.Execute(ct.Script)
 
-	if err == nil {
-		resetBackoff(errorBackoff)
-	}
-
 	if err != nil {
 		txn.NoticeError(err)
 	}
 	txn.End()
+
+	if err == nil {
+		resetErrorBackoff(ct.Type)
+	}
 
 	if err != nil {
 		task.ErrorMessage = fmt.Sprintf("%s", err)
@@ -331,7 +327,7 @@ var (
 	workerBackoffLock sync.Mutex
 )
 
-func getBackoff(taskType string) *backoff.Backoff {
+func doErrorBackoff(taskType string) {
 	workerBackoffLock.Lock()
 	defer workerBackoffLock.Unlock()
 
@@ -345,16 +341,16 @@ func getBackoff(taskType string) *backoff.Backoff {
 		}
 	}
 
-	return workerBackoff[taskType]
+	time.Sleep(workerBackoff[taskType].Duration())
 }
 
-func resetBackoff(bkoff *backoff.Backoff) {
-	if bkoff == nil {
-		return
-	}
-
+func resetErrorBackoff(taskType string) {
 	workerBackoffLock.Lock()
 	defer workerBackoffLock.Unlock()
 
-	bkoff.Reset()
+	if workerBackoff[taskType] == nil {
+		return
+	}
+
+	workerBackoff[taskType].Reset()
 }
