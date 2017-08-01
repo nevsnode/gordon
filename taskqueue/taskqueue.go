@@ -34,7 +34,7 @@ var (
 
 func init() {
 	workerCount = make(map[string]int)
-	workerBackoff = make(map[string]*backoff.Backoff)
+	workerBackoffs = make(map[string]*workerBackoff)
 }
 
 // Start initialises several variables and creates necessary go-routines
@@ -203,8 +203,12 @@ func taskWorker(task QueueTask, ct config.Task) {
 	}
 	txn.End()
 
-	if err == nil {
-		resetErrorBackoff(ct.Type)
+	if ct.BackoffEnabled {
+		if err == nil {
+			resetErrorBackoff(ct.Type)
+		} else {
+			setErrorBackoff(ct.Type)
+		}
 	}
 
 	if err != nil {
@@ -342,35 +346,48 @@ func returnWorker(taskType string) {
 	waitGroup.Done()
 }
 
+type workerBackoff struct {
+	Backoff *backoff.Backoff
+	Enabled bool
+}
+
 var (
-	workerBackoff     map[string]*backoff.Backoff
-	workerBackoffLock sync.Mutex
+	workerBackoffs     map[string]*workerBackoff
+	workerBackoffsLock sync.Mutex
 )
 
 func doErrorBackoff(taskType string) {
-	workerBackoffLock.Lock()
-	defer workerBackoffLock.Unlock()
+	workerBackoffsLock.Lock()
+	defer workerBackoffsLock.Unlock()
 
-	if workerBackoff[taskType] == nil {
+	if workerBackoffs[taskType] == nil {
 		ct := conf.Tasks[taskType]
-		workerBackoff[taskType] = &backoff.Backoff{
-			Min:    time.Duration(ct.BackoffMin) * time.Millisecond,
-			Max:    time.Duration(ct.BackoffMax) * time.Millisecond,
-			Factor: ct.BackoffFactor,
-			Jitter: true,
+		workerBackoffs[taskType] = &workerBackoff{
+			Backoff: &backoff.Backoff{
+				Min:    time.Duration(ct.BackoffMin) * time.Millisecond,
+				Max:    time.Duration(ct.BackoffMax) * time.Millisecond,
+				Factor: ct.BackoffFactor,
+				Jitter: true,
+			},
 		}
 	}
 
-	time.Sleep(workerBackoff[taskType].Duration())
+	if workerBackoffs[taskType].Enabled {
+		time.Sleep(workerBackoffs[taskType].Backoff.Duration())
+	}
+}
+
+func setErrorBackoff(taskType string) {
+	workerBackoffsLock.Lock()
+	defer workerBackoffsLock.Unlock()
+
+	workerBackoffs[taskType].Enabled = true
 }
 
 func resetErrorBackoff(taskType string) {
-	workerBackoffLock.Lock()
-	defer workerBackoffLock.Unlock()
+	workerBackoffsLock.Lock()
+	defer workerBackoffsLock.Unlock()
 
-	if workerBackoff[taskType] == nil {
-		return
-	}
-
-	workerBackoff[taskType].Reset()
+	workerBackoffs[taskType].Enabled = false
+	workerBackoffs[taskType].Backoff.Reset()
 }
