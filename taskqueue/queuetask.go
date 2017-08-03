@@ -5,10 +5,9 @@ package taskqueue
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nevsnode/gordon/utils"
 	"os"
-	"os/exec"
 	"strings"
-	"syscall"
 )
 
 // A QueueTask is the task as it is enqueued in a Redis-list.
@@ -20,17 +19,13 @@ type QueueTask struct {
 
 // Execute executes the passed script/application with the arguments from the QueueTask object.
 func (q QueueTask) Execute(script string) error {
-	cmd := exec.Command(script, q.Args...)
+	cmd := utils.ExecCommand(script, q.Args...)
 
 	// add possible environment variables
 	cmd.Env = os.Environ()
 	for envKey, envVal := range q.Env {
 		cmd.Env = append(cmd.Env, envKey+"="+envVal)
 	}
-
-	// set Setpgid to true, to execute command in different process group,
-	// so it won't receive the interrupt-signals sent to the main go-application
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	out, err := cmd.Output()
 

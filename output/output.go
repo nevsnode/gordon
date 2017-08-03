@@ -6,10 +6,10 @@ package output
 
 import (
 	"fmt"
+	"github.com/nevsnode/gordon/utils"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -111,7 +111,7 @@ func notify(msg ...interface{}) {
 	}
 
 	// Execute error-script
-	out, err := exec.Command(errorScript, tempFile).Output()
+	out, err := utils.ExecCommand(errorScript, tempFile).Output()
 
 	// The error-script caused an error ...
 	if err != nil {
