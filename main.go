@@ -15,7 +15,7 @@ import (
 )
 
 // GordonVersion is the current version of Gordon
-const GordonVersion = "1.6.4"
+const GordonVersion = "1.6.5"
 
 const cliDefaultLogfile = "-"
 
