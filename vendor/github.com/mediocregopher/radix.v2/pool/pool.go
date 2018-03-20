@@ -15,8 +15,9 @@ type Pool struct {
 	pool chan *redis.Client
 	df   DialFunc
 
-	stopOnce sync.Once
-	stopCh   chan bool
+	initDoneCh chan bool // used for tests
+	stopOnce   sync.Once
+	stopCh     chan bool
 
 	// The network/address that the pool is connecting to. These are going to be
 	// whatever was passed into the New function. These should not be
@@ -31,40 +32,29 @@ type DialFunc func(network, addr string) (*redis.Client, error)
 // used when creating new connections for the pool. The common use-case is to do
 // authentication for new connections.
 func NewCustom(network, addr string, size int, df DialFunc) (*Pool, error) {
-	var client *redis.Client
-	var err error
-	pool := make([]*redis.Client, 0, size)
-	for i := 0; i < size; i++ {
-		client, err = df(network, addr)
-		if err != nil {
-			for _, client = range pool {
-				client.Close()
-			}
-			pool = pool[:0]
-			break
-		}
-		pool = append(pool, client)
-	}
 	p := Pool{
-		Network: network,
-		Addr:    addr,
-		pool:    make(chan *redis.Client, len(pool)),
-		df:      df,
-		stopCh:  make(chan bool),
-	}
-	for i := range pool {
-		p.pool <- pool[i]
+		Network:    network,
+		Addr:       addr,
+		pool:       make(chan *redis.Client, size),
+		df:         df,
+		initDoneCh: make(chan bool),
+		stopCh:     make(chan bool),
 	}
 
 	if size < 1 {
-		return &p, err
+		return &p, nil
 	}
 
 	// set up a go-routine which will periodically ping connections in the pool.
 	// if the pool is idle every connection will be hit once every 10 seconds.
+	// we do some weird defer/wait stuff to ensure this always gets started no
+	// matter what happens with the rest of the initialization
+	startTickCh := make(chan struct{})
+	defer close(startTickCh)
 	go func() {
 		tick := time.NewTicker(10 * time.Second / time.Duration(size))
 		defer tick.Stop()
+		<-startTickCh
 		for {
 			select {
 			case <-p.stopCh:
@@ -76,7 +66,28 @@ func NewCustom(network, addr string, size int, df DialFunc) (*Pool, error) {
 		}
 	}()
 
-	return &p, err
+	mkConn := func() error {
+		client, err := df(network, addr)
+		if err == nil {
+			p.pool <- client
+		}
+		return err
+	}
+
+	// make one connection to make sure the redis instance is actually there
+	if err := mkConn(); err != nil {
+		return &p, err
+	}
+
+	// make the rest of the connections in the background, if any fail it's fine
+	go func() {
+		for i := 0; i < size-1; i++ {
+			mkConn()
+		}
+		close(p.initDoneCh)
+	}()
+
+	return &p, nil
 }
 
 // New creates a new Pool whose connections are all created using
