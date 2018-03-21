@@ -160,7 +160,7 @@ intervalLoop:
 					break
 				}
 
-				output.Debug("Fetched task for type", taskType, "with payload", value)
+				output.Debug("Fetched '"+taskType+"':", value)
 
 				task, err := NewQueueTask(value)
 				if err != nil {
@@ -172,7 +172,7 @@ intervalLoop:
 				claimWorker(taskType)
 				go taskWorker(task, configTask)
 
-				// we've actually are handling new tasks so reset the interval
+				// we've actually handled new tasks so reset the interval
 				interval.Reset()
 			}
 		}
@@ -193,7 +193,7 @@ func taskWorker(task QueueTask, ct config.Task) {
 	}
 
 	payload, _ := task.GetJSONString()
-	output.Debug("Executing task type", ct.Type, "- Payload:", payload)
+	output.Debug("Executing '"+ct.Type+"':", payload)
 	txn := stats.StartedTask(ct.Type)
 
 	err := task.Execute(ct.Script)
@@ -218,11 +218,10 @@ func taskWorker(task QueueTask, ct config.Task) {
 			queueTask:  task,
 		}
 
-		msg := fmt.Sprintf("Failed executing task for type \"%s\"\nPayload:\n%s\n\n%s", ct.Type, payload, err)
-		output.NotifyError(msg)
+		output.NotifyTaskError(ct, payload, fmt.Sprint(err))
 	}
 
-	output.Debug("Finished task type", ct.Type, "- Payload:", payload)
+	output.Debug("Finished '"+ct.Type+"':", payload)
 }
 
 func failedTaskWorker() {
@@ -240,21 +239,21 @@ func failedTaskWorker() {
 
 		jsonString, err := qt.GetJSONString()
 		if err != nil {
-			output.NotifyError("failedTaskWorker(), qt.GetJSONString():", err)
+			output.NotifyTaskError(ct, jsonString, "failedTaskWorker(), qt.GetJSONString(): "+fmt.Sprint(err))
 			continue
 		}
 
 		// add to list
 		reply := redisPoolCmd(3, "RPUSH", queueKey, jsonString)
 		if reply.Err != nil {
-			output.NotifyError("failedTaskWorker(), RPUSH:", reply.Err, "\nPayload:\n", jsonString)
+			output.NotifyTaskError(ct, jsonString, "failedTaskWorker(), RPUSH: "+fmt.Sprint(reply.Err))
 			continue
 		}
 
 		// set expire
 		reply = redisPoolCmd(3, "EXPIRE", queueKey, ct.FailedTasksTTL)
 		if reply.Err != nil {
-			output.NotifyError("failedTaskWorker(), EXPIRE:", reply.Err, "\nPayload:\n", jsonString)
+			output.NotifyTaskError(ct, jsonString, "failedTaskWorker(), EXPIRE: "+fmt.Sprint(reply.Err))
 			continue
 		}
 	}

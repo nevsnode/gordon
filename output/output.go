@@ -6,6 +6,7 @@ package output
 
 import (
 	"fmt"
+	"github.com/nevsnode/gordon/config"
 	"github.com/nevsnode/gordon/utils"
 	"io/ioutil"
 	"log"
@@ -31,10 +32,10 @@ var (
 	tempDir     = ""
 	logger      outputLogger
 
-	errorOutputTempFile       = "Failed writing temporary file: %s"
-	errorOutputTempFileRemove = "Failed removing temporary file: %s"
-	errorOutputCmd            = "Failed calling ErrorScript: %s"
-	errorOutputCmdOutput      = "Failed calling ErrorScript (created output): %s; Script: %s"
+	errorOutputTempFile       = prependError + " Failed writing temporary file: %s"
+	errorOutputTempFileRemove = prependError + " Failed removing temporary file: %s"
+	errorOutputCmd            = prependError + " error_script failed:\n%s"
+	errorOutputCmdOutput      = prependError + " %s failed:\n%s"
 )
 
 func init() {
@@ -82,20 +83,29 @@ func Debug(msg ...interface{}) {
 
 // StopError writes a message to the current output, executes the notify-command
 // and exits Gordon with the status 1.
-func StopError(msg ...interface{}) {
-	NotifyError(msg...)
+func StopError(msg string) {
+	NotifyError(msg)
 	os.Exit(1)
 }
 
 // NotifyError executes the notify-command with a given message.
 func NotifyError(msg ...interface{}) {
-	printLogger(append([]interface{}{prependError}, msg...)...)
-	notify(msg...)
+	printLogger(fmt.Sprintf("%s %s", prependError, fmt.Sprintln(msg...)))
+	notifyErrorScript(errorScript, make(map[string]string), msg)
 }
 
-// notify tries to execute the notify-command with the given message.
+// NotifyTaskError notifies about a failed task with the given message
+func NotifyTaskError(ct config.Task, taskJSON string, msg string) {
+	printLogger(fmt.Sprintf("%s %s\n%s\n%s", prependError, ct.Type, taskJSON, msg))
+	env := make(map[string]string)
+	env["TASK_TYPE"] = ct.Type
+	env["TASK_DATA"] = taskJSON
+	notifyErrorScript(ct.ErrorScript, env, msg)
+}
+
+// notifyErrorScript tries to execute the error-script with the given message.
 // In case of an error it will write the error and message to the current output.
-func notify(msg ...interface{}) {
+func notifyErrorScript(errorScript string, env map[string]string, msg ...interface{}) {
 	// Check if error-script is even defined
 	if errorScript == "" {
 		return
@@ -110,8 +120,15 @@ func notify(msg ...interface{}) {
 		return
 	}
 
-	// Execute error-script
-	out, err := utils.ExecCommand(errorScript, tempFile).Output()
+	cmd := utils.ExecCommand(errorScript, tempFile)
+
+	// add possible environment variables
+	cmd.Env = os.Environ()
+	for envKey, envVal := range env {
+		cmd.Env = append(cmd.Env, envKey+"="+envVal)
+	}
+
+	out, err := cmd.Output()
 
 	// The error-script caused an error ...
 	if err != nil {
@@ -120,7 +137,7 @@ func notify(msg ...interface{}) {
 
 	// ... or returned output
 	if len(out) != 0 && err == nil {
-		printLogger(fmt.Sprintf(errorOutputCmdOutput, out, errorScript))
+		printLogger(fmt.Sprintf(errorOutputCmdOutput, errorScript, out))
 	}
 
 	// Remove temporary file

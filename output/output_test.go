@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"github.com/nevsnode/gordon/config"
 	"github.com/nevsnode/gordon/utils"
 	"io/ioutil"
 	"os"
@@ -13,6 +14,7 @@ var testOutput = ""
 
 func resetTestOutput() {
 	testOutput = ""
+	errorScript = ""
 }
 
 type testLogger struct{}
@@ -70,10 +72,11 @@ func TestOutput(t *testing.T) {
 	}
 }
 
-func TestOutputNotify(t *testing.T) {
+func TestOutputNotifyErrorScript(t *testing.T) {
 	l := testLogger{}
 	logger = l
 	msg := "test output"
+	env := make(map[string]string)
 
 	if errorScript != "" {
 		t.Log("errorScript should be empty by default")
@@ -81,32 +84,90 @@ func TestOutputNotify(t *testing.T) {
 	}
 
 	resetTestOutput()
-	notify(msg)
+	notifyErrorScript(errorScript, env, msg)
 	if testOutput != "" {
-		t.Log("notify() should not create any output when errorScript is empty")
+		t.Log("notifyErrorScript() should not create any output when errorScript is empty")
 		t.Fail()
 	}
 
-	errorScript := "/bin/true"
-	SetErrorScript(errorScript)
-	if errorScript != errorScript {
+	es := "/bin/true"
+	SetErrorScript(es)
+	if es != errorScript {
 		t.Log("errorScript should be the value that was set through SetErrorScript")
 		t.FailNow()
 	}
 
 	resetTestOutput()
-	notify(msg)
+	SetErrorScript(es)
+	notifyErrorScript(errorScript, env, msg)
 	if testOutput != "" {
-		t.Log("notify() should not create output when executing a valid/successful command")
+		t.Log("notifyErrorScript() should not create output when executing a valid/successful command")
 		t.Fail()
 	}
 
 	resetTestOutput()
-	errorScript = "/bin/cat"
-	SetErrorScript(errorScript)
-	notify(msg)
+	es = "/bin/cat"
+	SetErrorScript(es)
+	notifyErrorScript(errorScript, env, msg)
 	if testOutput == "" {
-		t.Log("notify() should create output when executing a command that created output")
+		t.Log("notifyErrorScript() should create output when executing a command that created output")
+		t.Fail()
+	}
+	expected := "[ERROR] /bin/cat failed:\n\ttest output\n"
+	if testOutput != expected {
+		t.Log(fmt.Sprintf("notifyErrorScript() should create '%s' but created '%s' when error-script creates output", expected, testOutput))
+		t.Fail()
+	}
+
+	resetTestOutput()
+	es = "/bin/nonexistent"
+	SetErrorScript(es)
+	notifyErrorScript(errorScript, env, msg)
+	expected = "[ERROR] error_script failed:\n\tfork/exec /bin/nonexistent: no such file or directory\n"
+	if testOutput != expected {
+		t.Log(fmt.Sprintf("notifyErrorScript() should create '%s' but created '%s' when error-script creates output", expected, testOutput))
+		t.Fail()
+	}
+
+	resetTestOutput()
+	env["TEST_ENV_VAR"] = "foobar"
+	notifyErrorScript("../testdata/echoenv.sh", env, msg)
+	expected = "[ERROR] ../testdata/echoenv.sh failed:\n\tfoobar\n"
+	if testOutput != expected {
+		t.Log(fmt.Sprintf("notifyErrorScript() should create '%s' but created '%s' when error-script creates output", expected, testOutput))
+		t.Fail()
+	}
+}
+
+func TestOutputNotifyError(t *testing.T) {
+	l := testLogger{}
+	logger = l
+	msg := "test output"
+	var expected string
+
+	resetTestOutput()
+	expected = "[ERROR] test output\n"
+	NotifyError(msg)
+	if testOutput != expected {
+		t.Log(fmt.Sprintf("NotifyError() should create '%s' but created '%s'", expected, testOutput))
+		t.Fail()
+	}
+}
+
+func TestOutputNotifyTaskError(t *testing.T) {
+	l := testLogger{}
+	logger = l
+	msg := "test output"
+	var expected string
+	ct := config.Task{
+		Type: "test_type",
+	}
+
+	resetTestOutput()
+	expected = "[ERROR] test_type\n\t{}\n\ttest output\n"
+	NotifyTaskError(ct, "{}", msg)
+	if testOutput != expected {
+		t.Log(fmt.Sprintf("NotifyError() should create '%s' but created '%s'", expected, testOutput))
 		t.Fail()
 	}
 }
