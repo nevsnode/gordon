@@ -75,3 +75,9 @@ backoff_factor = 2.0
 [tasks.something]
 script = "/opt/something.php"
 # workers = 2
+
+[tasks.something_else]
+script = "/opt/something_else.py"
+# the following flag ignores all globally set values (error_script, failed_tasks_ttl, backoff_*)
+# so these need/can to be set here specifically when needed
+ignore_global_params = true

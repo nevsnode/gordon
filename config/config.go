@@ -8,7 +8,10 @@ import (
 )
 
 // DefaultConfig describes the default path to the configuration file.
-const DefaultConfig = "./gordon.config.toml"
+var defaultConfigs = []string{
+	"./gordon.config.toml",
+	"/etc/gordon.config.toml",
+}
 
 // A Config stores values, necessary for the execution of Gordon.
 type Config struct {
@@ -38,14 +41,16 @@ type StatsConfig struct {
 
 // A Task stores information that task-workers need to execute their script/application.
 type Task struct {
-	Type           string  // second part of the list-names used in Redis and used to identify tasks
-	Script         string  // path to the script/application that this task should execute
-	Workers        int     // number of concurrent go-routines available for this task
-	FailedTasksTTL int     `toml:"failed_tasks_ttl"` // ttl for the lists that store failed tasks
-	BackoffEnabled bool    `toml:"backoff_enabled"`  // task-specific flag to disable/enable error-backoff
-	BackoffMin     int     `toml:"backoff_min"`      // task specific error-backoff start value in milliseconds
-	BackoffMax     int     `toml:"backoff_max"`      // task specific error-backoff maximum value in milliseconds
-	BackoffFactor  float64 `toml:"backoff_factor"`   // task specific error-backoff multiplicator
+	Type               string  // second part of the list-names used in Redis and used to identify tasks
+	Script             string  // path to the script/application that this task should execute
+	Workers            int     // number of concurrent go-routines available for this task
+	IgnoreGlobalParams bool    `toml:"ignore_global_params"` // flag to ignore global parameters
+	ErrorScript        string  `toml:"error_script"`         // path to script/application that is executed when a task created an error
+	FailedTasksTTL     int     `toml:"failed_tasks_ttl"`     // ttl for the lists that store failed tasks
+	BackoffEnabled     bool    `toml:"backoff_enabled"`      // task-specific flag to disable/enable error-backoff
+	BackoffMin         int     `toml:"backoff_min"`          // task specific error-backoff start value in milliseconds
+	BackoffMax         int     `toml:"backoff_max"`          // task specific error-backoff maximum value in milliseconds
+	BackoffFactor      float64 `toml:"backoff_factor"`       // task specific error-backoff multiplicator
 }
 
 // NewRelicConfig stores information for the agent.
@@ -56,8 +61,23 @@ type NewRelicConfig struct {
 
 // New reads the provided file and returns a Config instance with the values from it.
 // It may also return an error, when the file doesn't exist, or the content could not be parsed.
-func New(path string) (c Config, err error) {
-	file, err := ioutil.ReadFile(path)
+func New(path string) (c Config, cpath string, err error) {
+	var (
+		file    []byte
+		configs []string
+	)
+	if path != "" {
+		configs = append(configs, path)
+	} else {
+		configs = defaultConfigs
+	}
+
+	for _, cpath = range configs {
+		file, err = ioutil.ReadFile(cpath)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return
 	}
@@ -102,24 +122,30 @@ func New(path string) (c Config, err error) {
 			task.Workers = 1
 		}
 
-		// override the failed-task-ttl if not set on this level
-		if task.FailedTasksTTL == 0 && c.FailedTasksTTL > 0 {
-			task.FailedTasksTTL = c.FailedTasksTTL
-		}
+		if task.IgnoreGlobalParams == false {
+			// 'override' global error-script
+			if task.ErrorScript == "" {
+				task.ErrorScript = c.ErrorScript
+			}
 
-		// if general error-backoff values are set, but not the task-specific
-		// ones, then we'll 'override' them here.
-		if c.BackoffEnabled {
-			task.BackoffEnabled = true
-		}
-		if task.BackoffMin == 0 {
-			task.BackoffMin = c.BackoffMin
-		}
-		if task.BackoffMax == 0 {
-			task.BackoffMax = c.BackoffMax
-		}
-		if task.BackoffFactor == 0 {
-			task.BackoffFactor = c.BackoffFactor
+			// 'override' global failed-task-ttl
+			if task.FailedTasksTTL == 0 && c.FailedTasksTTL > 0 {
+				task.FailedTasksTTL = c.FailedTasksTTL
+			}
+
+			// 'override' global backoff-settings
+			if c.BackoffEnabled {
+				task.BackoffEnabled = true
+			}
+			if task.BackoffMin == 0 {
+				task.BackoffMin = c.BackoffMin
+			}
+			if task.BackoffMax == 0 {
+				task.BackoffMax = c.BackoffMax
+			}
+			if task.BackoffFactor == 0 {
+				task.BackoffFactor = c.BackoffFactor
+			}
 		}
 
 		// ensure reasonable values for error-backoff

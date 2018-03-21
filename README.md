@@ -30,10 +30,10 @@ Now you can start the Gordon application. It accepts the following flags (all ar
 
 Flag|Type|Description
 ----|----|-----------
-c, conf|string|Path to the configuration file _(Overrides the default `./gordon.config.toml`)_
+conf|string|Path to the configuration file _(Overrides the default `./gordon.config.toml`)_
 logfile|string|Path to a logfile _(Overrides the logfile configured in the configuration & can be an empty value, to use standard output)_
-t, test|bool|Test configuration
-v, verbose|bool|Enable verbose/debugging output
+test|bool|Test configuration
+verbose|bool|Enable verbose/debugging output
 version|bool|Show version
 
 Example:
