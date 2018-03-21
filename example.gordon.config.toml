@@ -80,4 +80,4 @@ script = "/opt/something.php"
 script = "/opt/something_else.py"
 # the following flag ignores all globally set values (error_script, failed_tasks_ttl, backoff_*)
 # so these need/can to be set here specifically when needed
-ignore_global_params = true
+ignore_global_settings = true

@@ -41,16 +41,16 @@ type StatsConfig struct {
 
 // A Task stores information that task-workers need to execute their script/application.
 type Task struct {
-	Type               string  // second part of the list-names used in Redis and used to identify tasks
-	Script             string  // path to the script/application that this task should execute
-	Workers            int     // number of concurrent go-routines available for this task
-	IgnoreGlobalParams bool    `toml:"ignore_global_params"` // flag to ignore global parameters
-	ErrorScript        string  `toml:"error_script"`         // path to script/application that is executed when a task created an error
-	FailedTasksTTL     int     `toml:"failed_tasks_ttl"`     // ttl for the lists that store failed tasks
-	BackoffEnabled     bool    `toml:"backoff_enabled"`      // task-specific flag to disable/enable error-backoff
-	BackoffMin         int     `toml:"backoff_min"`          // task specific error-backoff start value in milliseconds
-	BackoffMax         int     `toml:"backoff_max"`          // task specific error-backoff maximum value in milliseconds
-	BackoffFactor      float64 `toml:"backoff_factor"`       // task specific error-backoff multiplicator
+	Type                 string  // second part of the list-names used in Redis and used to identify tasks
+	Script               string  // path to the script/application that this task should execute
+	Workers              int     // number of concurrent go-routines available for this task
+	IgnoreGlobalSettings bool    `toml:"ignore_global_settings"` // flag to ignore global settings
+	ErrorScript          string  `toml:"error_script"`           // path to script/application that is executed when a task created an error
+	FailedTasksTTL       int     `toml:"failed_tasks_ttl"`       // ttl for the lists that store failed tasks
+	BackoffEnabled       bool    `toml:"backoff_enabled"`        // task-specific flag to disable/enable error-backoff
+	BackoffMin           int     `toml:"backoff_min"`            // task specific error-backoff start value in milliseconds
+	BackoffMax           int     `toml:"backoff_max"`            // task specific error-backoff maximum value in milliseconds
+	BackoffFactor        float64 `toml:"backoff_factor"`         // task specific error-backoff multiplicator
 }
 
 // NewRelicConfig stores information for the agent.
@@ -122,7 +122,7 @@ func New(path string) (c Config, cpath string, err error) {
 			task.Workers = 1
 		}
 
-		if task.IgnoreGlobalParams == false {
+		if task.IgnoreGlobalSettings == false {
 			// 'override' global error-script
 			if task.ErrorScript == "" {
 				task.ErrorScript = c.ErrorScript

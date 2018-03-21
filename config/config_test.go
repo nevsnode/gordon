@@ -27,13 +27,13 @@ func TestConfig(t *testing.T) {
 
 	if len(conf.Tasks) > 0 {
 		for _, task := range conf.Tasks {
-			if conf.BackoffEnabled && !task.IgnoreGlobalParams && !task.BackoffEnabled {
+			if conf.BackoffEnabled && !task.IgnoreGlobalSettings && !task.BackoffEnabled {
 				t.Log("BackoffEnabled for a task should be true, when the global value is")
 				t.Fail()
 				break
 			}
 
-			if conf.BackoffEnabled && task.IgnoreGlobalParams && task.BackoffEnabled {
+			if conf.BackoffEnabled && task.IgnoreGlobalSettings && task.BackoffEnabled {
 				t.Log("BackoffEnabled for a task should be false, when the global value is true but IgnoreGlobalParams is enabled")
 				t.Fail()
 				break
