@@ -6,7 +6,6 @@ Gordon aims to be a provide a simple, reliable and lightweight task-queue.
 It is built utilizing Go and Redis.
 
 Gordon provides functionality to execute tasks in the background of your main application/api/service. By using Go-routines, a concurrent execution of tasks can easily be achieved.
-As Gordon just executes commands, you can use any kind of script or application, as long as it runs on the command-line.
 
 
 ## Getting Started
@@ -43,7 +42,7 @@ Example:
 
 #### 3. Integrate
 
-The last step is to integrate Gordon so that commands can be executed.
+The last step is to integrate Gordon so that tasks can be executed.
 
 This is achieved by inserting entries into Redis-lists. Take a look at the section [Handling Tasks](#handling-tasks) for a brief explanation.
 
@@ -71,12 +70,15 @@ The command in Redis would then look like this:
 RPUSH myqueue:update_something '{"args":["1234"],"env":{"foo":"bar"}}'
 ```
 
-This will initiate the execution of the configured `Script` for the task `update_something` with the first parameter beeing `1234`
-and the environment variable `foo=bar`.
-
-Assuming your task is configured with *script* `/path/to/do_something.sh`, Gordon will execute it like this:
+Assuming your task is configured with `script = /path/to/do_something.sh`, Gordon will execute it like this:
 ```
 foo=bar /path/to/do_something.sh 1234
+```
+
+Assuming your task is configured with `url = https://api.business.com` instead, Gordon will execute an http-request like this:
+```
+URL: https://api.business.com/1234
+POST-parameters: foo=bar
 ```
 
 **Structure of a task entry**
@@ -89,26 +91,19 @@ The values that are inserted to the Redis-lists have to be JSON-encoded strings,
         "param2"
     ],
     "env": {
-        "foo": "bar"
+        "some_key": "some value"
     }
 }
 ```
 
-They have to be an object with the property `args` that is an **array containing strings**.
-Environment variables can also be passed with the property `env`.
-
-Arguments that are contained in `args`, will be passed to the *script* in the exact same order.
-The task above would therefore be executed like this:
-```
-foo=bar /path/to/do_something.sh "param1" "param2"
-```
+* `args`: list containing strings (used in the provided order)
+* `env`: simple key-value-object
 
 ## Failed Tasks
-
 Tasks returning an exit-code other than 0 or creating output are considered to be failed.
 In some cases one might want to handle these tasks separately, for instance re-queuing them.
 
-An `error_script`, if defined, can be executed to notify about failed tasks.
+An `error_script` or `error_webhook`, if defined, can be used to notify about failed tasks.
 But in some cases it is useful to handle them programmatically (in addition to notifying, or instead).
 
 It is therefor possible to enable saving of failed tasks to separate Redis-lists. To enable this functionality `failed_tasks_ttl` must be set and have a value greater than 0.

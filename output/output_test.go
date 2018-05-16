@@ -113,7 +113,7 @@ func TestOutputNotifyErrorScript(t *testing.T) {
 		t.Log("notifyErrorScript() should create output when executing a command that created output")
 		t.Fail()
 	}
-	expected := "[ERROR] /bin/cat failed:\n\ttest output\n"
+	expected := "[ERROR] error_script /bin/cat failed:\n\ttest output\n"
 	if testOutput != expected {
 		t.Log(fmt.Sprintf("notifyErrorScript() should create '%s' but created '%s' when error-script creates output", expected, testOutput))
 		t.Fail()
@@ -123,7 +123,7 @@ func TestOutputNotifyErrorScript(t *testing.T) {
 	es = "/bin/nonexistent"
 	SetErrorScript(es)
 	notifyErrorScript(errorScript, env, msg)
-	expected = "[ERROR] error_script failed:\n\tfork/exec /bin/nonexistent: no such file or directory\n"
+	expected = "[ERROR] error_script /bin/nonexistent failed:\n\tfork/exec /bin/nonexistent: no such file or directory\n"
 	if testOutput != expected {
 		t.Log(fmt.Sprintf("notifyErrorScript() should create '%s' but created '%s' when error-script creates output", expected, testOutput))
 		t.Fail()
@@ -132,7 +132,7 @@ func TestOutputNotifyErrorScript(t *testing.T) {
 	resetTestOutput()
 	env["TEST_ENV_VAR"] = "foobar"
 	notifyErrorScript("../testdata/echoenv.sh", env, msg)
-	expected = "[ERROR] ../testdata/echoenv.sh failed:\n\tfoobar\n"
+	expected = "[ERROR] error_script ../testdata/echoenv.sh failed:\n\tfoobar\n"
 	if testOutput != expected {
 		t.Log(fmt.Sprintf("notifyErrorScript() should create '%s' but created '%s' when error-script creates output", expected, testOutput))
 		t.Fail()

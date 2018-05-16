@@ -1,6 +1,7 @@
 package taskqueue
 
 import (
+	"github.com/nevsnode/gordon/config"
 	"reflect"
 	"testing"
 )
@@ -13,7 +14,7 @@ func TestQueueTask(t *testing.T) {
 
 	qt.Args = make([]string, 1)
 	qt.Args[0] = ""
-	err := qt.Execute(script)
+	err := qt.Execute(config.Task{Script: script})
 	if err != nil {
 		t.Log("QueueTask.Execute() should not return an error")
 		t.Log("err: ", err)
@@ -21,7 +22,7 @@ func TestQueueTask(t *testing.T) {
 	}
 
 	qt.Args[0] = msg
-	err = qt.Execute(script)
+	err = qt.Execute(config.Task{Script: script})
 	if msg != err.Error() {
 		t.Log("Returned error-message should be the same as the first argument")
 		t.Log("err: ", err)
@@ -29,7 +30,7 @@ func TestQueueTask(t *testing.T) {
 	}
 
 	jsonString, err := qt.GetJSONString()
-	jsonStringExpected := `{"args":["` + msg + `"],"env":{}}`
+	jsonStringExpected := `{"args":["` + msg + `"]}`
 	if err != nil {
 		t.Log("QueueTask.GetJSONString() should not return an error")
 		t.Log("err: ", err)
@@ -45,7 +46,7 @@ func TestQueueTask(t *testing.T) {
 	qt2 := QueueTask{
 		Env: map[string]string{"TEST_ENV_VAR": msg},
 	}
-	err = qt2.Execute("../testdata/echoenv.sh")
+	err = qt2.Execute(config.Task{Script: "../testdata/echoenv.sh"})
 	if msg != err.Error() {
 		t.Log("Returned error-message should be the same as the environment variable")
 		t.Log("err: ", err)
@@ -53,7 +54,7 @@ func TestQueueTask(t *testing.T) {
 	}
 
 	jsonString, err = qt2.GetJSONString()
-	jsonStringExpected = `{"args":[],"env":{"TEST_ENV_VAR":"` + msg + `"}}`
+	jsonStringExpected = `{"env":{"TEST_ENV_VAR":"` + msg + `"}}`
 	if err != nil {
 		t.Log("QueueTask.GetJSONString() should not return an error")
 		t.Log("err: ", err)

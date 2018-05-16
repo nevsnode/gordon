@@ -54,6 +54,10 @@ func Start(c config.Config) {
 
 	for _, ct := range conf.Tasks {
 		createWorkerCount(ct.Type)
+
+		if ct.Webhook.IsSet() {
+			CreateHTTPClient(ct)
+		}
 	}
 
 	waitGroupFailed.Add(1)
@@ -77,11 +81,11 @@ func Stop() {
 // Wait waits, to keep the application running as long as there are workers
 func Wait() {
 	waitGroup.Wait()
-	output.Debug("Finished task-workers")
+	output.Debug("Stopped task-workers")
 
 	close(failedChan)
 	waitGroupFailed.Wait()
-	output.Debug("Finished failed-task-worker")
+	output.Debug("Stopped failed-task-worker")
 }
 
 func queueWorker() {
@@ -164,7 +168,7 @@ intervalLoop:
 
 				task, err := NewQueueTask(value)
 				if err != nil {
-					output.NotifyError("NewQueueTask():", err)
+					output.NotifyTaskError(configTask, value, fmt.Sprintf("NewQueueTask(): %s", err))
 					continue
 				}
 
@@ -182,7 +186,7 @@ intervalLoop:
 
 	Stop()
 	waitGroup.Done()
-	output.Debug("Finished queue-worker")
+	output.Debug("Stopped queue-worker")
 }
 
 func taskWorker(task QueueTask, ct config.Task) {
@@ -196,7 +200,7 @@ func taskWorker(task QueueTask, ct config.Task) {
 	output.Debug("Executing '"+ct.Type+"':", payload)
 	txn := stats.StartedTask(ct.Type)
 
-	err := task.Execute(ct.Script)
+	err := task.Execute(ct)
 
 	if err != nil {
 		txn.NoticeError(err)

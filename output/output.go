@@ -10,8 +10,11 @@ import (
 	"github.com/nevsnode/gordon/utils"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 // outputLogger is an interface implemented by objects that
@@ -34,8 +37,8 @@ var (
 
 	errorOutputTempFile       = prependError + " Failed writing temporary file: %s"
 	errorOutputTempFileRemove = prependError + " Failed removing temporary file: %s"
-	errorOutputCmd            = prependError + " error_script failed:\n%s"
-	errorOutputCmdOutput      = prependError + " %s failed:\n%s"
+	errorOutputCmd            = prependError + " error_script %s failed:\n%s"
+	errorOutputWebhook        = prependError + " error_webhook %s failed:\n%s"
 )
 
 func init() {
@@ -97,9 +100,12 @@ func NotifyError(msg ...interface{}) {
 // NotifyTaskError notifies about a failed task with the given message
 func NotifyTaskError(ct config.Task, taskJSON string, msg string) {
 	printLogger(fmt.Sprintf("%s %s\n%s\n%s", prependError, ct.Type, taskJSON, msg))
+
 	env := make(map[string]string)
-	env["TASK_TYPE"] = ct.Type
-	env["TASK_DATA"] = taskJSON
+	env["task_type"] = ct.Type
+	env["task_data"] = taskJSON
+
+	notifyErrorWebhook(ct, env, msg)
 	notifyErrorScript(ct.ErrorScript, env, msg)
 }
 
@@ -130,14 +136,12 @@ func notifyErrorScript(errorScript string, env map[string]string, msg ...interfa
 
 	out, err := cmd.Output()
 
-	// The error-script caused an error ...
 	if err != nil {
-		printLogger(fmt.Sprintf(errorOutputCmd, err))
-	}
-
-	// ... or returned output
-	if len(out) != 0 && err == nil {
-		printLogger(fmt.Sprintf(errorOutputCmdOutput, errorScript, out))
+		// The error-script caused an error ...
+		printLogger(fmt.Sprintf(errorOutputCmd, errorScript, err))
+	} else if len(out) != 0 {
+		// ... or returned output
+		printLogger(fmt.Sprintf(errorOutputCmd, errorScript, out))
 	}
 
 	// Remove temporary file
@@ -161,4 +165,33 @@ func writeTempFile(msg string) (filename string, err error) {
 
 	filename = file.Name()
 	return
+}
+
+func notifyErrorWebhook(ct config.Task, env map[string]string, msg ...interface{}) {
+	if ct.ErrorWebhook == "" {
+		return
+	}
+
+	values := url.Values{}
+	for key, value := range env {
+		values.Add(key, value)
+	}
+
+	client := &http.Client{
+		Timeout: time.Second * time.Duration(ct.HTTPTimeout),
+	}
+	res, err := client.PostForm(ct.ErrorWebhook, values)
+
+	if err != nil {
+		// The error-webhook failed...
+		printLogger(fmt.Sprintf(errorOutputWebhook, ct.ErrorWebhook, err))
+	} else {
+		defer res.Body.Close()
+		body, err := ioutil.ReadAll(res.Body)
+
+		if err == nil && len(body) > 0 {
+			// ... or returned output
+			printLogger(fmt.Sprintf(errorOutputWebhook, ct.ErrorWebhook, body))
+		}
+	}
 }
